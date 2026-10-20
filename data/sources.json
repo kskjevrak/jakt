@@ -1,0 +1,643 @@
+[
+ {
+  "name": "SR16 Skogressurskart raster (16 m)",
+  "dataset": "NIBIO, uuid 5de45872-f534-4e97-840e-3cfd8db04398",
+  "license": "CC BY 4.0 (NLOD)",
+  "attempts": [
+   {
+    "route": "WCS",
+    "url": "https://wcs.nibio.no/cgi-bin/sr16",
+    "ok": false,
+    "detail": "vertsnavn finnes ikke; wms.nibio.no/cgi-bin/sr16 gir ServiceException for SERVICE=WCS"
+   },
+   {
+    "route": "Atom",
+    "url": "https://kartkatalog.geonorge.no/api/getdata/5de45872-f534-4e97-840e-3cfd8db04398",
+    "ok": false,
+    "detail": "ingen Atom-feed registrert for datasettet"
+   },
+   {
+    "route": "Nedlastings-API",
+    "url": "https://kartkatalog.nibio.no/api/v2/can-download",
+    "ok": true,
+    "detail": "{\"canDownload\":true}"
+   },
+   {
+    "route": "Nedlastings-API",
+    "url": "https://kartkatalog.nibio.no/api/v2/order",
+    "ok": true,
+    "detail": "ordre a4fa3da6-1a19-4d92-bb47-5b27a023725f, fil 42_25833_sr16_RASTER.zip status ReadyForDownload"
+   }
+  ],
+  "route_used": "NIBIO nedlastings-API (fylkesfil) + klipp til AOI",
+  "files": [
+   {
+    "path": "raw\\sr16\\42_25833_sr16_RASTER.zip",
+    "size": 1849687119,
+    "last_modified": "Mon, 31 Aug 2026 11:41:18 GMT",
+    "fetched_at": "2026-10-20T12:37:34Z",
+    "url": "https://kart8.nibio.no/uttak_Download/sr16raster/42_25833_sr16_RASTER.zip"
+   },
+   {
+    "path": "raw\\sr16\\aoi_treslag.tif",
+    "size": 49165,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:39:23Z",
+    "url": ""
+   },
+   {
+    "path": "raw\\sr16\\aoi_hoyde.tif",
+    "size": 575626,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:39:23Z",
+    "url": ""
+   },
+   {
+    "path": "raw\\sr16\\aoi_overhoyde.tif",
+    "size": 597350,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:39:23Z",
+    "url": ""
+   },
+   {
+    "path": "raw\\sr16\\aoi_volum.tif",
+    "size": 642865,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:39:23Z",
+    "url": ""
+   },
+   {
+    "path": "raw\\sr16\\aoi_bonitet.tif",
+    "size": 72317,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:39:23Z",
+    "url": ""
+   },
+   {
+    "path": "raw\\sr16\\aoi_kronedekning.tif",
+    "size": 230612,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:39:23Z",
+    "url": ""
+   },
+   {
+    "path": "raw\\sr16\\aoi_grunnflate.tif",
+    "size": 437335,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:39:23Z",
+    "url": ""
+   },
+   {
+    "path": "raw\\sr16\\aoi_diameter.tif",
+    "size": 404456,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:39:23Z",
+    "url": ""
+   },
+   {
+    "path": "raw\\sr16\\aoi_treantall.tif",
+    "size": 687687,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:39:23Z",
+    "url": ""
+   },
+   {
+    "path": "raw\\sr16\\aoi_alder.tif",
+    "size": 604078,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:39:24Z",
+    "url": ""
+   }
+  ],
+  "version": "",
+  "notes": [
+   "Klippet til AOI: treslag, hoyde, overhoyde, volum, bonitet, kronedekning, grunnflate, diameter, treantall, alder",
+   "Kjøretid 1 s"
+  ],
+  "ok": true
+ },
+ {
+  "name": "Artskart funn (lirype, orrfugl, storfugl)",
+  "dataset": "Artsdatabanken Artskart public API, observations/list",
+  "license": "CC BY 4.0 (per datasett)",
+  "attempts": [
+   {
+    "route": "REST",
+    "url": "https://artskart.artsdatabanken.no/publicapi/api/observations/list?filter.taxons=3987&filter.wktPolygon=...",
+    "ok": true,
+    "detail": "4 funn av lirype totalt i polygonet, 0 siste 15 år"
+   },
+   {
+    "route": "REST",
+    "url": "https://artskart.artsdatabanken.no/publicapi/api/observations/list?filter.taxons=203489&filter.wktPolygon=...",
+    "ok": true,
+    "detail": "7 funn av orrfugl totalt i polygonet, 3 siste 15 år"
+   },
+   {
+    "route": "REST",
+    "url": "https://artskart.artsdatabanken.no/publicapi/api/observations/list?filter.taxons=203484&filter.wktPolygon=...",
+    "ok": true,
+    "detail": "4 funn av storfugl totalt i polygonet, 1 siste 15 år"
+   }
+  ],
+  "route_used": "REST (Artskart public API)",
+  "files": [
+   {
+    "path": "data/artskart.geojson",
+    "size": 2687,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:38:04Z",
+    "url": "https://artskart.artsdatabanken.no/publicapi/api/observations/list"
+   }
+  ],
+  "version": "2011-10-24 – 2026-10-20",
+  "notes": [
+   "4 funn totalt. Observatørnavn lagres ikke.",
+   "Kjøretid 1 s"
+  ],
+  "ok": true
+ },
+ {
+  "name": "FKB-AR5 arealressurs",
+  "dataset": "Geovekst/NIBIO FKB-AR5, uuid 166382b4-82d6-4ea9-a68e-6fd0c87bf788",
+  "license": "FKB-AR5 vektor: Norge digitalt-begrenset. AR5 WMS og AR50: NLOD/CC BY 4.0",
+  "attempts": [
+   {
+    "route": "WFS",
+    "url": "https://wfs.nibio.no/cgi-bin/ar5",
+    "ok": false,
+    "detail": "MapServer Message  \n \n \nmsLoadMap(): Unable to access file. (/var/www/wfs/ar5/ar5.map)"
+   },
+   {
+    "route": "WFS",
+    "url": "https://wfs.nibio.no/cgi-bin/ar5_2",
+    "ok": false,
+    "detail": "MapServer Message  \n \n \nmsLoadMap(): Unable to access file. (/var/www/wfs/ar5_2/ar5_2.map)"
+   },
+   {
+    "route": "Atom",
+    "url": "https://nedlasting.geonorge.no/api/download/file//166382b4-82d6-4ea9-a68e-6fd0c87bf788/C37E2E92-BA17-44AA-843C-DA2EDE448437",
+    "ok": false,
+    "detail": "HTTP 403; feed-kategori: Norge digitalt-begrenset"
+   },
+   {
+    "route": "Nedlastings-API (Geonorge)",
+    "url": "https://nedlasting.geonorge.no/api/capabilities/166382b4-82d6-4ea9-a68e-6fd0c87bf788",
+    "ok": false,
+    "detail": "krever rolle: nd.filnedlasting,nd.landbrukspart,nd.filnedlasting.fkb"
+   },
+   {
+    "route": "WMS GetStyles",
+    "url": "https://wms.nibio.no/cgi-bin/ar5?REQUEST=GetStyles",
+    "ok": true,
+    "detail": "Arealtype: 11 klasser, Grunnforhold: 6 klasser, Skogbonitet: 5 klasser, Treslag: 4 klasser"
+   },
+   {
+    "route": "WMS GetMap",
+    "url": "https://wms.nibio.no/cgi-bin/ar5?REQUEST=GetMap&CRS=EPSG:25833&LAYERS=...",
+    "ok": true,
+    "detail": "4 lag à 2410x1308 px, 5 m"
+   },
+   {
+    "route": "WMS GetFeatureInfo",
+    "url": "https://wms.nibio.no/cgi-bin/ar5?REQUEST=GetFeatureInfo&INFO_FORMAT=application/vnd.ogc.gml",
+    "ok": true,
+    "detail": "12/12 stikkprøver: dekodet artype/treslag/grunnforhold = attributter fra GetFeatureInfo"
+   },
+   {
+    "route": "Nedlastings-API (AR50, NIBIO)",
+    "url": "https://kartkatalog.nibio.no/api/v2/order",
+    "ok": true,
+    "detail": "4220_4258_ar50_gdb.zip gdb EPSG:4258"
+   }
+  ],
+  "route_used": "WMS GetMap 5 m dekodet via SLD (vektor er Norge digitalt-begrenset)",
+  "files": [
+   {
+    "path": "raw\\ar5\\ar5_arealtype_5m.tif",
+    "size": 138965,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:38:06Z",
+    "url": "https://wms.nibio.no/cgi-bin/ar5"
+   },
+   {
+    "path": "raw\\ar5\\ar5_treslag_5m.tif",
+    "size": 153336,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:38:06Z",
+    "url": "https://wms.nibio.no/cgi-bin/ar5"
+   },
+   {
+    "path": "raw\\ar5\\ar5_skogbonitet_5m.tif",
+    "size": 122363,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:38:07Z",
+    "url": "https://wms.nibio.no/cgi-bin/ar5"
+   },
+   {
+    "path": "raw\\ar5\\ar5_grunnforhold_5m.tif",
+    "size": 174034,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:38:07Z",
+    "url": "https://wms.nibio.no/cgi-bin/ar5"
+   },
+   {
+    "path": "raw\\ar5\\ar50\\4220_4258_ar50_gdb.zip",
+    "size": 5751785,
+    "last_modified": "Mon, 31 Mar 2025 14:30:02 GMT",
+    "fetched_at": "2026-10-20T12:31:53Z",
+    "url": "https://kart8.nibio.no/uttak_Download/ar50/4220_4258_ar50_gdb.zip"
+   }
+  ],
+  "version": "",
+  "notes": [
+   "Skogbonitet-dekoding: (WMS-stilkode grvanlig, AR5 arskogbon) observert: [(8, 13), (9, 12), (10, 11)]. AR5 arskogbon: 11 impediment, 12 lav, 13 middels, 14 høg, 15 særs høg.",
+   "Vektor-AR5 er ikke åpen; klassene er rasterisert fra NIBIO sin AR5 WMS i 5 m og aggregeres til 10 m i build. Kantpiksler mellom to klasser kan få nærmeste legendefarge.",
+   "Kjøretid 5 s"
+  ],
+  "ok": true
+ },
+ {
+  "name": "N50 Kartdata",
+  "dataset": "Kartverket, uuid ea192681-d039-42ec-b1bc-f3ce04c189ac",
+  "license": "CC BY 4.0",
+  "attempts": [
+   {
+    "route": "WFS",
+    "url": "https://kartkatalog.geonorge.no/api/search?text=N50 Kartdata WFS",
+    "ok": false,
+    "detail": "ingen N50 WFS registrert i Geonorge"
+   },
+   {
+    "route": "Atom",
+    "url": "https://nedlasting.geonorge.no/geonorge/Basisdata/N50Kartdata/GML/Basisdata_4220_Bygland_25833_N50Kartdata_GML.zip",
+    "ok": true,
+    "detail": "kommunefil GML EPSG:25833"
+   }
+  ],
+  "route_used": "Atom feed (kommunefil GML)",
+  "files": [
+   {
+    "path": "raw\\n50\\Basisdata_4220_Bygland_25833_N50Kartdata_GML.zip",
+    "size": 25055049,
+    "last_modified": "Fri, 16 Oct 2026 04:57:39 GMT",
+    "fetched_at": "2026-10-20T12:23:35Z",
+    "url": "https://nedlasting.geonorge.no/geonorge/Basisdata/N50Kartdata/GML/Basisdata_4220_Bygland_25833_N50Kartdata_GML.zip"
+   }
+  ],
+  "version": "",
+  "notes": [
+   "Kjøretid 9 s"
+  ],
+  "ok": true
+ },
+ {
+  "name": "Høyde – NHM DTM (1 m, hentet som 2 m)",
+  "dataset": "Kartverket, Nasjonal detaljert høydemodell DTM, WCS coverage nhm_dtm_topo_25833",
+  "license": "CC BY 4.0",
+  "attempts": [
+   {
+    "route": "WCS 1.0.0",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833?service=WCS&version=1.0.0&request=GetCoverage&coverage=nhm_dtm_topo_25833",
+    "ok": true,
+    "detail": "35 fliser à 2000 m / 2 m oppløsning"
+   },
+   {
+    "route": "WCS 1.1.2",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833?version=1.1.2",
+    "ok": false,
+    "detail": "UnSupportedCombination: image/GeoTIFF does not support the coverage data type"
+   },
+   {
+    "route": "WCS 2.0.1",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833?version=2.0.1",
+    "ok": false,
+    "detail": "ArcGIS Server http.400 på alle GetCoverage-varianter"
+   },
+   {
+    "route": "REST",
+    "url": "https://ws.geonorge.no/hoydedata/v1/punkt",
+    "ok": true,
+    "detail": "punkthøyder for kjente topper"
+   }
+  ],
+  "route_used": "WCS 1.0.0 (Kartverket NHM DTM)",
+  "files": [
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_72000_6534000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:29:39Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_72000_6536000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:29:42Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_72000_6538000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:29:45Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_72000_6540000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:29:48Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_72000_6542000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:29:52Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_74000_6534000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:29:55Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_74000_6536000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:29:58Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_74000_6538000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:30:01Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_74000_6540000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:30:04Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_74000_6542000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:30:08Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_76000_6534000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:30:11Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_76000_6536000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:30:15Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_76000_6538000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:30:19Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_76000_6540000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:30:23Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_76000_6542000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:30:27Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_78000_6534000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:30:30Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_78000_6536000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:30:34Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_78000_6538000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:30:38Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_78000_6540000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:30:41Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_78000_6542000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:30:45Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_80000_6534000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:30:51Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_80000_6536000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:30:55Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_80000_6538000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:30:59Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_80000_6540000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:31:03Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_80000_6542000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:31:07Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_82000_6534000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:31:11Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_82000_6536000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:31:14Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_82000_6538000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:31:17Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_82000_6540000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:31:21Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_82000_6542000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:31:25Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_84000_6534000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:31:28Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_84000_6536000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:31:30Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_84000_6538000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:31:35Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_84000_6540000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:31:39Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   },
+   {
+    "path": "raw\\dtm\\tiles\\dtm2m_84000_6542000.tif",
+    "size": 4195951,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:31:42Z",
+    "url": "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+   }
+  ],
+  "version": "",
+  "notes": [
+   "Hakefjellet: høyde-API 872.0 m (dtm1), forventet 873 m, avvik -1.0 m (stedsnavnpunktet er ikke nødvendigvis toppunktet)",
+   "Skjevraknuten: høyde-API 783.9 m (dtm1), forventet 786 m, avvik -2.1 m (stedsnavnpunktet er ikke nødvendigvis toppunktet)",
+   "Hukebuvatnet: høyde-API 584.0 m (innsjohoyde), forventet 584 m, avvik +0.0 m (stedsnavnpunktet er ikke nødvendigvis toppunktet)",
+   "Fallback dokumentert, ikke brukt: Geonorge nedlastings-API, DTM 10 UTM33 uuid dddbb667-1303-4ac5-8640-7ec04c0e3918.",
+   "Kjøretid 128 s"
+  ],
+  "ok": true
+ },
+ {
+  "name": "Matrikkelen – Eiendomskart Teig",
+  "dataset": "Kartverket, uuid 74340c24-1c8a-4454-b813-bfe498e80f16 (daglig oppdatert)",
+  "license": "CC BY 4.0",
+  "attempts": [
+   {
+    "route": "REST",
+    "url": "https://api.kartverket.no/eiendom/v1/geokoding?matrikkelnummer=4220-49/1",
+    "ok": true,
+    "detail": "5 teig(er) for 49/1, 1 feste/seksjon-teig(er)"
+   },
+   {
+    "route": "REST",
+    "url": "https://api.kartverket.no/eiendom/v1/geokoding?matrikkelnummer=4220-49/2",
+    "ok": true,
+    "detail": "7 teig(er) for 49/2, 0 feste/seksjon-teig(er)"
+   },
+   {
+    "route": "REST",
+    "url": "https://api.kartverket.no/eiendom/v1/geokoding?matrikkelnummer=4220-49/3",
+    "ok": true,
+    "detail": "9 teig(er) for 49/3, 0 feste/seksjon-teig(er)"
+   },
+   {
+    "route": "REST",
+    "url": "https://api.kartverket.no/eiendom/v1/geokoding?matrikkelnummer=4220-49/4",
+    "ok": true,
+    "detail": "2 teig(er) for 49/4, 0 feste/seksjon-teig(er)"
+   },
+   {
+    "route": "REST",
+    "url": "https://api.kartverket.no/eiendom/v1/geokoding?matrikkelnummer=4220-50/1",
+    "ok": true,
+    "detail": "10 teig(er) for 50/1, 0 feste/seksjon-teig(er)"
+   },
+   {
+    "route": "WFS",
+    "url": "https://wfs.geonorge.no/skwms1/wfs.matrikkelen-eiendomskart-teig?service=WFS&version=2.0.0&request=GetFeature&typeNames=app:Teig&bbox=...",
+    "ok": true,
+    "detail": "522 teiger i bbox (73260, 6534864, 87110, 6542921)"
+   }
+  ],
+  "route_used": "WFS (Kartverket) + REST-validering",
+  "files": [
+   {
+    "path": "raw\\teig\\teig_wfs.gml",
+    "size": 4738717,
+    "last_modified": "",
+    "fetched_at": "2026-10-20T12:22:36Z",
+    "url": "https://wfs.geonorge.no/skwms1/wfs.matrikkelen-eiendomskart-teig"
+   }
+  ],
+  "version": "2026-02-25T13:16:28.043",
+  "notes": [
+   "34 teigpunkter fra REST for 5 matrikkelenheter; 522 teiger lastet i bbox med 2500 m margin.",
+   "Kjøretid 6 s",
+   "Jaktfelt 2139.0 ha, 33 teiger + 1 festeteiger, 37 naboteiger innen 500 m",
+   "Flagget: ['49/3,5 (flere matrikkelenheter)']"
+  ],
+  "ok": true
+ }
+]

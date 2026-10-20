@@ -1,0 +1,37 @@
+{
+  "_kommentar": "Startpunkter for dagsruter. lat/lon i WGS84. null = ikke satt ennå, klikkes inn i kartet. 'kilde' sier hvor koordinaten kommer fra.",
+  "startpunkter": [
+    {
+      "id": "mele",
+      "navn": "Mele",
+      "lat": 58.78733,
+      "lon": 7.77308,
+      "kilde": "Kartverket stedsnavn-API, navneobjekttype 'Annen kulturdetalj', Bygland",
+      "verifisert": false
+    },
+    {
+      "id": "gateskar",
+      "navn": "Gateskar",
+      "lat": 58.77906,
+      "lon": 7.71075,
+      "kilde": "Kartverket stedsnavn-API, nærmeste treff 'Garteskar' (Skar) i Bygland. Må verifiseres.",
+      "verifisert": false
+    },
+    {
+      "id": "troddebakken",
+      "navn": "Troddebakken",
+      "lat": null,
+      "lon": null,
+      "kilde": "Ikke i stedsnavnregisteret. Klikkes inn i kartet.",
+      "verifisert": false
+    },
+    {
+      "id": "enden-av-vegen",
+      "navn": "Enden av vegen",
+      "lat": null,
+      "lon": null,
+      "kilde": "Lokalt navn. Klikkes inn i kartet.",
+      "verifisert": false
+    }
+  ]
+}
