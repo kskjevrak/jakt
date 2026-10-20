@@ -134,6 +134,13 @@ h2.sec { font: var(--t-body); font-weight: 700; margin: var(--s-5) 0 var(--s-1);
 .timer div.flag { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
 .timer div.flag b, .timer div.flag svg { color: var(--warn); }
 .under { font: var(--t-small); color: var(--ink-2); margin: -4px 0 var(--s-2); }
+.maalmark { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font: 700 13px/24px var(--font); text-align: center; border: 2px solid var(--halo); cursor: default; }
+.maalmark.dempet { background: var(--ink-2); }
+.andel { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin: var(--s-2) 0 var(--s-1); }
+.andel i { display: block; height: 100%; }
+.stokk { display: flex; gap: var(--s-4); flex-wrap: wrap; }
+.stokk div { min-width: 70px; }
+.stokk .num-l { display: block; }
 
 @media (min-width: 900px) {
   .panel { top: calc(64px + env(safe-area-inset-top)); left: var(--s-4); bottom: var(--s-4); width: min(var(--panel-w), 33vw); }
@@ -227,10 +234,11 @@ dialog[open] { animation: dlg var(--d-panel) var(--ease-out); }
       <div class="legend-labels" id="legend-labels"></div>
       <h2 class="sec">Vær <span class="small" id="vaer-kilde"></span></h2>
       <div id="vaer" class="swap"><div class="empty">Henter varsel fra MET.</div></div>
+      <h2 class="sec">Rute</h2>
+      <div id="rute" class="swap"></div>
       <h2 class="sec">Dagens oppsett</h2>
       <div id="oppsett-liste"></div>
       <div class="actions-row">
-        <button class="btn btn-primary" id="btn-rute" disabled title="Kommer i neste steg">Lag rute for dagen</button>
         <button class="btn" id="btn-nytt">Nytt oppsett</button>
       </div>
       <h2 class="sec">Steder</h2>
@@ -295,7 +303,7 @@ const LS = { oppsett: 'jakt.oppsett', lag: 'jakt.lag', tema: 'jakt.tema', visnin
 const CFG = {};
 const state = {
   oppsett: null, dag: 1, art: 'lirype', sone: 'alle', tema: 'auto',
-  lag: { score: true, score10: false, dominant: false, kjerner: true, artskart: true, jaktfelt: true, nabo: true, vann: true, stier: true, myr: false, punkter: true, wmsAr5: false, wmsTreslag: false, wmsBonitet: false, wmsMatrikkel: false },
+  lag: { score: true, score10: false, dominant: false, ruter: true, besokt: true, kjerner: true, artskart: true, jaktfelt: true, nabo: true, vann: true, stier: true, myr: false, punkter: true, wmsAr5: false, wmsTreslag: false, wmsBonitet: false, wmsMatrikkel: false },
   grid: null, gridKjerner: false, velgIKart: null,
 };
 let map, stedMarkers = [], startMarkers = [], gridLoaded = false;
@@ -415,7 +423,7 @@ $('#btn-nytt').addEventListener('click', () => apneOppsett(false));
 function artForDag() { const a = state.oppsett?.arter[state.dag - 1]; return a || 'blandet'; }
 function tegnSlicer() {
   const o = state.oppsett;
-  byggSeg($('#seg-dag'), Array.from({ length: o.dager }, (_, i) => [String(i + 1), `Dag ${i + 1}`]), String(state.dag), v => { state.dag = +v; state.art = artForDag(); tegnSlicer(); tegnPanel(); oppdaterScoreLag(); skrivHash(); });
+  byggSeg($('#seg-dag'), Array.from({ length: o.dager }, (_, i) => [String(i + 1), `Dag ${i + 1}`]), String(state.dag), v => { state.dag = +v; state.art = artForDag(); tegnSlicer(); tegnPanel(); oppdaterScoreLag(); oppdaterRuteLag(true); skrivHash(); });
   byggSeg($('#seg-art'), ['lirype', 'orrfugl', 'storfugl', 'blandet'].map(a => [a, ART_NAVN[a], a === 'blandet' ? cssVar('--ink-2') : cssVar('--' + a)]), state.art, v => { state.art = v; tegnPanel(); oppdaterScoreLag(); });
   byggSeg($('#seg-sone'), SONER.map(([v, l]) => [v, l]), state.sone, v => { state.sone = v; tegnPanel(); oppdaterScoreLag(); });
 }
@@ -443,7 +451,7 @@ function tegnPanel() {
     ];
     $('#oppsett-liste').replaceChildren(...rader.map(([k, v]) => el('div', { class: 'row' }, el('span', { class: 'k' }, k), el('span', { class: 'v' }, v))));
     $('#steder-liste').replaceChildren(...CFG.steder.steder.map(s => el('div', { class: 'row' }, el('span', { class: 'k' }, `${s.navn}, ${s.hoyde_moh} moh`), el('button', { class: 'btn btn-small', onclick: () => map.flyTo({ center: [s.lon, s.lat], zoom: 14.5 }) }, 'Vis'))));
-    tegnLegend();
+    tegnLegend(); tegnRute();
     inn.classList.remove('out');
     tegnVaer();
   }, matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 120);
@@ -516,7 +524,8 @@ async function lastGrid() {
     state.gridKjerner = brukKjerner(g);
     state.grid = g; gridLoaded = true;
     map.getSource('grid').setData(g);
-    oppdaterScoreLag(); tegnPanel();
+    GRAF = byggGraf(g, CFG.route); beregnMiddel(); gjenopprettRuter();
+    oppdaterScoreLag(); oppdaterRuteLag(); tegnPanel();
   } catch (e) {
     gridLoaded = true; $('#tall-ha').innerHTML = '–<small>fikk ikke lastet cellene. Prøv å laste siden på nytt.</small>';
   }
@@ -549,6 +558,7 @@ function byggStil(metas, F, mork, lag) {
     vann: { type: 'geojson', data: 'data/vann.geojson' }, bekker: { type: 'geojson', data: 'data/bekker.geojson' }, stier: { type: 'geojson', data: 'data/stier.geojson' }, myr: { type: 'geojson', data: 'data/myr_n50.geojson' },
     artskart: { type: 'geojson', data: 'data/artskart.geojson' }, kjerner: { type: 'geojson', data: 'config/kjerner.geojson' },
     dominant10: { type: 'image', url: 'data/dominant.png', coordinates: metas.dominant.coordinates },
+    besokt: { type: 'geojson', data: TOM_FC }, 'rute-andre': { type: 'geojson', data: TOM_FC }, 'rute-aktiv': { type: 'geojson', data: TOM_FC, lineMetrics: true }, spor: { type: 'geojson', data: TOM_FC },
   };
   for (const a of ARTER) sources[`score10-${a}`] = { type: 'image', url: `data/score_${a}.png`, coordinates: metas[a].coordinates };
   const vis = on => ({ visibility: on ? 'visible' : 'none' });
@@ -572,15 +582,34 @@ function byggStil(metas, F, mork, lag) {
     { id: 'kjerner-fill', type: 'fill', source: 'kjerner', layout: vis(lag.kjerner), paint: { 'fill-color': F.accent, 'fill-opacity': 0.12 } },
     { id: 'kjerner-line', type: 'line', source: 'kjerner', layout: vis(lag.kjerner), paint: { 'line-color': F.accent, 'line-width': 2, 'line-dasharray': [3, 2] } },
     { id: 'wms-matrikkel', type: 'raster', source: 'wms-matrikkel', layout: vis(lag.wmsMatrikkel), paint: { 'raster-opacity': 0.8 } },
+    { id: 'besokt', type: 'fill', source: 'besokt', layout: vis(lag.besokt), paint: { 'fill-pattern': 'hatch-graa', 'fill-opacity': ['interpolate', ['linear'], ['get', 'alder'], 1, 0.9, 4, 0.35] } },
     { id: 'artskart', type: 'circle', source: 'artskart', layout: vis(lag.artskart), paint: { 'circle-radius': 6, 'circle-color': artFarge(F), 'circle-stroke-color': F.halo, 'circle-stroke-width': 1.5 } },
+    { id: 'rute-sveip', type: 'line', source: 'rute-aktiv', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': F.accent, 'line-opacity': 0.16, 'line-width': ['interpolate', ['exponential', 2], ['zoom'], 12, 4, 13, 8, 15, 32, 17, 128] } },
+    { id: 'rute-andre', type: 'line', source: 'rute-andre', layout: Object.assign({ 'line-cap': 'round', 'line-join': 'round' }, vis(lag.ruter)), paint: { 'line-color': F.ink2, 'line-width': 2, 'line-dasharray': [1.5, 2] } },
+    { id: 'spor', type: 'line', source: 'spor', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': F.ink, 'line-width': 1.4, 'line-dasharray': [2, 2], 'line-opacity': 0.8 } },
+    { id: 'rute-halo', type: 'line', source: 'rute-aktiv', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': F.halo, 'line-width': 6.5 } },
+    { id: 'rute-aktiv', type: 'line', source: 'rute-aktiv', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': F.accent, 'line-width': 4 } },
+    { id: 'retning', type: 'symbol', source: 'rute-aktiv', layout: { 'symbol-placement': 'line', 'symbol-spacing': 110, 'icon-image': 'pil', 'icon-size': 0.55, 'icon-rotation-alignment': 'map', 'icon-allow-overlap': true, 'icon-ignore-placement': true } },
   ];
   return { version: 8, sources, layers };
+}
+const TOM_FC = { type: 'FeatureCollection', features: [] };
+function pilBilde(color) {
+  const c = document.createElement('canvas'); c.width = 32; c.height = 32; const x = c.getContext('2d');
+  x.fillStyle = color; x.strokeStyle = cssVar('--halo'); x.lineWidth = 3; x.lineJoin = 'round';
+  x.beginPath(); x.moveTo(6, 8); x.lineTo(26, 16); x.lineTo(6, 24); x.lineTo(11, 16); x.closePath(); x.stroke(); x.fill();
+  return x.getImageData(0, 0, 32, 32);
+}
+function sikreBilder() {
+  const F = lesFarger();
+  const sett = (id, img) => { if (map.hasImage(id)) map.updateImage(id, img); else map.addImage(id, img, { pixelRatio: 1 }); };
+  sett('hatch', hatch(F.nabo)); sett('hatch-graa', hatch(cssVar('--visited'))); sett('pil', pilBilde(F.accent));
 }
 
 async function initKart() {
   const metas = {}; for (const a of [...ARTER, 'dominant']) metas[a] = await (await fetch(a === 'dominant' ? 'data/dominant.json' : `data/score_${a}.json`)).json();
-  map = new maplibregl.Map({ container: 'map', style: byggStil(metas, lesFarger(), erMork(), state.lag), center: [7.72, 58.785], zoom: 12.3, minZoom: 9, maxZoom: 17, attributionControl: false, maxPitch: 0 });
-  map.on('styleimagemissing', e => { if (e.id === 'hatch' && !map.hasImage('hatch')) map.addImage('hatch', hatch(cssVar('--nabo')), { pixelRatio: 1 }); });
+  map = new maplibregl.Map({ container: 'map', style: byggStil(metas, lesFarger(), erMork(), state.lag), center: [7.72, 58.785], zoom: 12.3, minZoom: 9, maxZoom: 17, attributionControl: false, maxPitch: 0, preserveDrawingBuffer: true });
+  map.on('styleimagemissing', e => { if (['hatch', 'hatch-graa', 'pil'].includes(e.id) && !map.hasImage(e.id)) sikreBilder(); });
   map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: 'Funn: Artsdatabanken' }), 'bottom-right');
   map.addControl(new maplibregl.ScaleControl({ maxWidth: 140 }), 'bottom-right');
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
@@ -626,11 +655,11 @@ function oppdaterStartMarkorer() {
 
 // ============================================================ lagvelger
 const LAGDEF = {
-  vaare: [['score', 'Habitatscore, 50 m-celler', null], ['score10', 'Score i 10 m (detaljbilde)', null], ['dominant', 'Dominerende art, 10 m', null], ['kjerner', 'Kjerneområder fra lokalkunnskap', '--accent'], ['artskart', 'Funn fra Artskart', '--orrfugl']],
+  vaare: [['score', 'Habitatscore, 50 m-celler', null], ['score10', 'Score i 10 m (detaljbilde)', null], ['dominant', 'Dominerende art, 10 m', null], ['ruter', 'Andre dagers ruter', '--ink-2'], ['besokt', 'Sist besøkt, skravur', '--ink-2'], ['kjerner', 'Kjerneområder fra lokalkunnskap', '--accent'], ['artskart', 'Funn fra Artskart', '--orrfugl']],
   grunnlag: [['jaktfelt', 'Jaktfelt og teiger', '--ink'], ['nabo', 'Naboteiger, der vi ikke går', '--warn'], ['vann', 'Vann og bekker', '--water'], ['stier', 'Stier og veger', '--ink-2'], ['myr', 'Myr fra N50', '--mire'], ['punkter', 'Startpunkter', '--ink']],
   sannhet: [['wmsAr5', 'NIBIO AR5 arealtype', null], ['wmsTreslag', 'NIBIO SR16 treslag', null], ['wmsBonitet', 'NIBIO SR16 bonitet', null], ['wmsMatrikkel', 'Kartverket matrikkelkart', null]],
 };
-const LAGKART = { score: ['score-grid'], kjerner: ['kjerner-fill', 'kjerner-line'], artskart: ['artskart'], jaktfelt: ['jaktfelt', 'teiger'], nabo: ['nabo-fill', 'nabo-line'], vann: ['vann', 'bekker'], stier: ['stier'], myr: ['myr'], wmsAr5: ['wms-ar5'], wmsTreslag: ['wms-treslag'], wmsBonitet: ['wms-bonitet'], wmsMatrikkel: ['wms-matrikkel'] };
+const LAGKART = { score: ['score-grid'], ruter: ['rute-andre'], besokt: ['besokt'], kjerner: ['kjerner-fill', 'kjerner-line'], artskart: ['artskart'], jaktfelt: ['jaktfelt', 'teiger'], nabo: ['nabo-fill', 'nabo-line'], vann: ['vann', 'bekker'], stier: ['stier'], myr: ['myr'], wmsAr5: ['wms-ar5'], wmsTreslag: ['wms-treslag'], wmsBonitet: ['wms-bonitet'], wmsMatrikkel: ['wms-matrikkel'] };
 function tegnLagvelger() {
   for (const [grp, liste] of Object.entries(LAGDEF)) {
     const box = $(`#lag-${grp === 'vaare' ? 'vaare' : grp}`); box.replaceChildren();
@@ -666,8 +695,10 @@ function brukTema() {
     for (const [id, [prop, val]] of Object.entries(paints)) map.setPaintProperty(id, prop, val);
     map.setPaintProperty('artskart', 'circle-stroke-color', F.halo);
     map.setPaintProperty('artskart', 'circle-color', artFarge(F));
-    if (map.hasImage('hatch')) map.updateImage('hatch', hatch(F.nabo));
-    oppdaterScoreLag(); tegnSlicer(); tegnLegend();
+    sikreBilder();
+    map.setPaintProperty('rute-andre', 'line-color', F.ink2); map.setPaintProperty('spor', 'line-color', F.ink); map.setPaintProperty('rute-halo', 'line-color', F.halo);
+    map.setPaintProperty('rute-aktiv', 'line-color', F.accent); map.setPaintProperty('rute-sveip', 'line-color', F.accent);
+    oppdaterScoreLag(); tegnSlicer(); tegnLegend(); oppdaterRuteLag();
   });
 }
 $('#btn-tema').addEventListener('click', () => { state.tema = erMork() ? 'light' : 'dark'; store.set(LS.tema, state.tema); brukTema(); });
@@ -784,6 +815,218 @@ async function tegnVaer() {
   const rec = VAER.punkter[top.id]; $('#vaer-kilde').textContent = rec ? (rec.kilde === 'live' ? `MET, hentet ${klokke(rec.hentet)}` : `lagret kopi fra ${klokke(rec.hentet)}`) : '';
   box.classList.add('out'); setTimeout(() => { box.replaceChildren(frag); box.classList.remove('out'); }, 60);
 }
+
+// ============================================================ rute og rotasjon
+const RUTE = { dager: {}, sig: null, middel: {} };
+let GRAF = null, maalMarkers = [];
+const PROJ = { lon0: 7.72, lat0: 58.785, kx: 111320 * Math.cos(58.785 * Math.PI / 180), ky: 110574 };
+function toXY(lon, lat) { return [(lon - PROJ.lon0) * PROJ.kx, (lat - PROJ.lat0) * PROJ.ky]; }
+function toLL(x, y) { return [x / PROJ.kx + PROJ.lon0, y / PROJ.ky + PROJ.lat0]; }
+
+function byggGraf(grid, cfgRoute) {
+  const nodes = [], idx = new Map(); const maksHelning = cfgRoute.rute.straff_helning_over_grader;
+  for (const f of grid.features) {
+    const p = f.properties; if (p.inn < 0.5) continue;
+    const r = f.geometry.coordinates[0]; const lon = (r[0][0] + r[2][0]) / 2, lat = (r[0][1] + r[2][1]) / 2; const [x, y] = toXY(lon, lat);
+    const vann = (p.vann || 0) > 0.5 || p.at === 81 || p.at === 82;
+    const ok = !vann && !(p.s > maksHelning) && p.at !== 11 && p.at !== 12 && p.at !== 70 && p.h != null;
+    const n = { k: p.i * 100000 + p.j, i: p.i, j: p.j, lon, lat, x, y, h: p.h, s: p.s, at: p.at, sti: p.sti, p, ok, nb: [] };
+    idx.set(n.k, nodes.length); nodes.push(n);
+  }
+  const g = cfgRoute.gange;
+  for (const n of nodes) {
+    if (!n.ok) continue;
+    for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
+      if (!di && !dj) continue; const m = idx.get((n.i + di) * 100000 + (n.j + dj)); if (m == null) continue; const o = nodes[m]; if (!o.ok) continue;
+      const dist = Math.hypot(o.x - n.x, o.y - n.y) || 50; const dh = o.h - n.h; const v = g.flat_kmt * Math.exp(-g.k * Math.abs(dh / dist + g.offset));
+      const tf = (n.sti || o.sti) ? g.terrengfaktor.sti : (g.terrengfaktor[String(o.at)] != null ? g.terrengfaktor[String(o.at)] : 0.85);
+      n.nb.push({ to: m, dist, dh, t: dist / (v * tf / 3.6) });
+    }
+  }
+  return { nodes, idx };
+}
+function dijkstra(graf, src) {
+  const N = graf.nodes.length; const t = new Float64Array(N).fill(Infinity), m = new Float64Array(N), up = new Float64Array(N), prev = new Int32Array(N).fill(-1);
+  const heap = []; const push = (k, v) => { heap.push([k, v]); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+  const pop = () => { const top = heap[0]; const last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let s = i; if (l < heap.length && heap[l][0] < heap[s][0]) s = l; if (r < heap.length && heap[r][0] < heap[s][0]) s = r; if (s === i) break; [heap[s], heap[i]] = [heap[i], heap[s]]; i = s; } } return top; };
+  t[src] = 0; push(0, src);
+  while (heap.length) { const [d, u] = pop(); if (d > t[u]) continue; for (const e of graf.nodes[u].nb) { const nd = d + e.t; if (nd < t[e.to]) { t[e.to] = nd; m[e.to] = m[u] + e.dist; up[e.to] = up[u] + Math.max(0, e.dh); prev[e.to] = u; push(nd, e.to); } } }
+  return { t, m, up, prev };
+}
+function stiTil(D, target) { const out = []; for (let v = target; v !== -1; v = D.prev[v]) out.push(v); return out.reverse(); }
+function naermesteNode(graf, pt) { const [x, y] = toXY(pt.lon, pt.lat); let best = -1, bd = Infinity; for (let i = 0; i < graf.nodes.length; i++) { const n = graf.nodes[i]; if (!n.ok) continue; const d = Math.hypot(n.x - x, n.y - y); if (d < bd) { bd = d; best = i; } } return best; }
+function nodesWithin(graf, ix, r) { const n = graf.nodes[ix]; const out = []; const c = Math.ceil(r / 50); for (let di = -c; di <= c; di++) for (let dj = -c; dj <= c; dj++) { if (Math.hypot(di, dj) * 50 > r + 1) continue; const m = graf.idx.get((n.i + di) * 100000 + (n.j + dj)); if (m != null) out.push(m); } return out; }
+function scoreAv(n, art) { if (art === 'blandet') { let mx = -1; for (const a of ARTER) { const v = n.p[scoreKey(a)]; if (v != null && v > mx) mx = v; } return mx; } const v = n.p[scoreKey(art)]; return v == null ? -1 : v; }
+function rotasjon(k, dag, tidligere, cfgRot) { let f = 1; for (let d = 1; d < dag; d++) { const r = tidligere[d]; if (r && r.besokt && r.besokt[k]) f = Math.min(f, 1 - cfgRot.styrke * Math.pow(0.5, (dag - d) / cfgRot.halveringstid_dager)); } return f; }
+function velgMaal(graf, art, dag, tidligere, cfg) {
+  const R_V = 200, R_S = 450; const cands = [];
+  for (let ix = 0; ix < graf.nodes.length; ix++) {
+    const n = graf.nodes[ix]; if (!n.ok) continue; const s = scoreAv(n, art); if (s < cfg.rute.min_score_maal) continue;
+    const v = s * rotasjon(n.k, dag, tidligere, cfg.rotasjon); if (v < cfg.rute.min_score_maal * 0.6) continue;
+    let naer = false; for (let d = 1; d < dag && !naer; d++) { const r = tidligere[d]; if (r && r.naer && r.naer[n.k]) naer = true; } if (naer) continue;
+    cands.push({ ix, v });
+  }
+  cands.sort((a, b) => b.v - a.v); const maal = []; const tatt = new Uint8Array(graf.nodes.length);
+  for (const c of cands) {
+    if (maal.length >= cfg.rute.maks_antall_maal) break; if (tatt[c.ix]) continue; const n = graf.nodes[c.ix]; let sum = 0, cnt = 0;
+    for (const o of cands) { const m = graf.nodes[o.ix]; const d = Math.hypot(m.x - n.x, m.y - n.y); if (d <= R_S) tatt[o.ix] = 1; if (d <= R_V) { sum += o.v; cnt++; } }
+    maal.push({ ix: c.ix, verdi: sum, topp: c.v, celler: cnt });
+  }
+  return maal;
+}
+function chaikin(pts, iter) { let p = pts; for (let k = 0; k < iter; k++) { const q = [p[0]]; for (let i = 0; i < p.length - 1; i++) { const a = p[i], b = p[i + 1]; q.push([0.75 * a[0] + 0.25 * b[0], 0.75 * a[1] + 0.25 * b[1]], [0.25 * a[0] + 0.75 * b[0], 0.25 * a[1] + 0.75 * b[1]]); } q.push(p[p.length - 1]); p = q; } return p; }
+function offsetLinje(xy, d) { const out = []; for (let i = 0; i < xy.length; i++) { const a = xy[Math.max(0, i - 1)], b = xy[Math.min(xy.length - 1, i + 1)]; const dx = b[0] - a[0], dy = b[1] - a[1]; const L = Math.hypot(dx, dy) || 1; out.push([xy[i][0] - dy / L * d, xy[i][1] + dx / L * d]); } return out; }
+function retningGrader(a, b) { return (Math.atan2(b[0] - a[0], b[1] - a[1]) * 180 / Math.PI + 360) % 360; }
+function vinkelDiff(a, b) { return Math.abs(((a - b + 540) % 360) - 180); }
+
+function planleggDag(dag, o, graf, tidligere, cfg, steder, startPt, sluttPt, vind, middel) {
+  const art = o.arter[dag - 1] || 'blandet'; const b = cfg.form[o.form];
+  const startN = naermesteNode(graf, startPt); const sluttN = sluttPt ? naermesteNode(graf, sluttPt) : startN;
+  const base = o.sloyfe ? steder.find(s => s.roller.includes('base')) : null; const baseN = base ? naermesteNode(graf, base) : -1;
+  if (startN < 0) return { dag, art, feil: 'Fant ingen gåbar celle nær startpunktet.' };
+  const maal = velgMaal(graf, art, dag, tidligere, cfg);
+  const fixed = baseN >= 0 ? [startN, baseN, sluttN] : [startN, sluttN];
+  const pts = [...new Set([...fixed, ...maal.map(m => m.ix)])]; const D = new Map(); for (const p of pts) D.set(p, dijkstra(graf, p));
+  const lunsj = baseN >= 0 ? cfg.rute.lunsj_min * 60 : 0; const pf = 1 + cfg.gange.pause_min_per_time / 60;
+  const budsjett = { m: b.maks_km * 1000, up: b.maks_hoydemeter, t: o.timer * 3600 - lunsj };
+  const kost = tr => { let m = 0, up = 0, t = 0; for (let i = 0; i < tr.length - 1; i++) { const d = D.get(tr[i]); m += d.m[tr[i + 1]]; up += d.up[tr[i + 1]]; t += d.t[tr[i + 1]]; } return { m, up, t: t * pf }; };
+  let tour = fixed.slice(); if (!isFinite(kost(tour).t)) return { dag, art, feil: 'Start, slutt eller bua kan ikke nås til fots innenfor jaktfeltet.' };
+  const verdiAv = ix => (maal.find(m => m.ix === ix) || { verdi: 0 }).verdi;
+  const rest = new Set(maal.map(m => m.ix).filter(ix => !fixed.includes(ix)));
+  for (;;) {
+    let best = null; const kNaa = kost(tour).t;
+    for (const mx of rest) for (let pos = 1; pos < tour.length; pos++) {
+      const tr = tour.slice(0, pos).concat([mx], tour.slice(pos)); const c = kost(tr);
+      if (!isFinite(c.t) || c.m > budsjett.m || c.up > budsjett.up || c.t > budsjett.t) continue;
+      const ratio = verdiAv(mx) / Math.max(c.t - kNaa, 60); if (!best || ratio > best.ratio) best = { ratio, tr, mx };
+    }
+    if (!best) break; tour = best.tr; rest.delete(best.mx);
+  }
+  let improved = true;
+  while (improved) { improved = false; for (let i = 1; i < tour.length - 2; i++) for (let j = i + 1; j < tour.length - 1; j++) { const seg = tour.slice(i, j + 1); if (seg.some(x => fixed.includes(x))) continue; const tr = tour.slice(0, i).concat(seg.reverse(), tour.slice(j + 1)); if (kost(tr).t < kost(tour).t - 1) { tour = tr; improved = true; } } }
+  const bygg = tr => { const np = []; for (let i = 0; i < tr.length - 1; i++) { const seg = stiTil(D.get(tr[i]), tr[i + 1]); np.push(...(i ? seg.slice(1) : seg)); } return np; };
+  const partier = tr => tr.filter(ix => !fixed.includes(ix));
+  const inngang = (np, tr) => { const mål = partier(tr); if (!mål.length) return null; const topp = mål.reduce((a, c) => verdiAv(c) > verdiAv(a) ? c : a); const at = np.indexOf(topp); if (at < 2) return null; return { topp, heading: retningGrader([graf.nodes[np[Math.max(0, at - 4)]].x, graf.nodes[np[Math.max(0, at - 4)]].y], [graf.nodes[topp].x, graf.nodes[topp].y]) }; };
+  let np = bygg(tour); let inn = inngang(np, tour); let retning = 'Ingen vindretning i varselet, ruten går som planlagt.';
+  if (vind && inn) {
+    let diff = vinkelDiff(inn.heading, vind.fra);
+    if (diff > 90 && startN === sluttN) { const tr2 = [tour[0]].concat(tour.slice(1, -1).reverse(), [tour[tour.length - 1]]); const np2 = bygg(tr2); const inn2 = inngang(np2, tr2); if (inn2 && vinkelDiff(inn2.heading, vind.fra) < diff) { tour = tr2; np = np2; inn = inn2; diff = vinkelDiff(inn2.heading, vind.fra); } }
+    const nr = partier(tour).indexOf(inn.topp) + 1;
+    retning = diff <= 60 ? `Mot vinden inn i parti ${nr}, vind fra ${kompass(vind.fra)} ${fmt.int(vind.ms)} m/s om morgenen.` : diff <= 120 ? `Sidevind inn i parti ${nr}, vind fra ${kompass(vind.fra)} ${fmt.int(vind.ms)} m/s. Gå gjerne et lite stykke lenger ${kompass(vind.fra)} før dere svinger inn.` : `Vinden fra ${kompass(vind.fra)} kommer bakfra inn i parti ${nr}. Med valgt start og slutt finnes ingen bedre retning; vurder å bytte start og slutt.`;
+  }
+  const r = cfg.rotasjon.radius_m, sveipR = cfg.rute.korridorbredde_m / 2 + 10; const besokt = {}, naer = {}, sveip = new Set();
+  for (const ix of np) { for (const m of nodesWithin(graf, ix, r)) besokt[graf.nodes[m].k] = true; for (const m of nodesWithin(graf, ix, 300)) naer[graf.nodes[m].k] = true; for (const m of nodesWithin(graf, ix, sveipR)) sveip.add(m); }
+  const k = kost(tour); const andel = { skog: 0, apent: 0, myr: 0, annet: 0 }; const stokk = {}; for (const a of ARTER) stokk[a] = 0;
+  const S = cfg.stokk;
+  for (const m of sveip) { const n = graf.nodes[m]; andel[n.at === 30 ? 'skog' : n.at === 50 ? 'apent' : n.at === 60 ? 'myr' : 'annet']++; for (const a of ARTER) { const s = n.p[scoreKey(a)]; if (s != null && middel[a] > 0) stokk[a] += S.tetthet_fugl_per_km2 * (s / middel[a]) * 0.0025 * S.oppdagelsesandel_uten_hund; } }
+  const nSv = sveip.size || 1; for (const key in andel) andel[key] /= nSv;
+  const path = np.map(ix => [graf.nodes[ix].lon, graf.nodes[ix].lat, Math.round(graf.nodes[ix].h)]);
+  const xy = chaikin(np.map(ix => [graf.nodes[ix].x, graf.nodes[ix].y]), 2); const half = cfg.jegere.avstand_m / 2;
+  const spor = [offsetLinje(xy, half).map(p => toLL(p[0], p[1])), offsetLinje(xy, -half).map(p => toLL(p[0], p[1]))];
+  const glatt = xy.map(p => toLL(p[0], p[1]));
+  const maalListe = partier(tour).map((ix, i) => ({ nr: i + 1, lon: graf.nodes[ix].lon, lat: graf.nodes[ix].lat, h: Math.round(graf.nodes[ix].h), verdi: Math.round(verdiAv(ix)), topp: Math.round((maal.find(m => m.ix === ix) || {}).topp || 0), fraBase: baseN >= 0 ? { m: D.get(baseN).m[ix], t: D.get(baseN).t[ix] * pf } : null, lunsjFor: baseN >= 0 && tour.indexOf(ix) < tour.indexOf(baseN) }));
+  return { dag, art, tour, path, glatt, spor, maal: maalListe, besokt, naer, retning, vind, base: baseN >= 0 ? { navn: base.navn, lon: graf.nodes[baseN].lon, lat: graf.nodes[baseN].lat } : null,
+           start: { lon: graf.nodes[startN].lon, lat: graf.nodes[startN].lat, navn: startPt.navn }, slutt: { lon: graf.nodes[sluttN].lon, lat: graf.nodes[sluttN].lat },
+           stats: { m: k.m, up: k.up, t: k.t + lunsj, lunsj, andel, stokk, sveipCeller: sveip.size, budsjett, antallMaal: maalListe.length, kandidater: maal.length } };
+}
+
+function beregnMiddel() { for (const a of ARTER) { let s = 0, n = 0; for (const node of GRAF.nodes) { const v = node.p[scoreKey(a)]; if (v != null && v >= 0) { s += v; n++; } } RUTE.middel[a] = n ? s / n : 0; } }
+function ruteSignatur() { const o = state.oppsett; return JSON.stringify([o.dato, o.dager, o.form, o.start_tid, o.timer, o.start, o.slutt, o.sloyfe, o.arter, o.egen, CFG.habitat.versjon, state.grid && state.grid.metadata && state.grid.metadata.bygget]); }
+function lagreRuter() { RUTE.sig = ruteSignatur(); store.set('jakt.ruter', { sig: RUTE.sig, dager: RUTE.dager }); }
+function gjenopprettRuter() { const s = store.get('jakt.ruter', null); if (s && s.sig === ruteSignatur()) { RUTE.dager = s.dager || {}; RUTE.sig = s.sig; } else { RUTE.dager = {}; RUTE.sig = null; } }
+function lagDag(d) {
+  const o = state.oppsett; const startPt = punkt(o.start) || punkt('hukebu') || CFG.steder.steder[0]; const sluttPt = o.slutt === 'samme' ? null : punkt(o.slutt);
+  const dato = isoDate(addDays(o.dato, d - 1)); const vind = vindMorgen(dato, +o.start_tid.slice(0, 2));
+  const r = planleggDag(d, o, GRAF, RUTE.dager, CFG.route, CFG.steder.steder, startPt, sluttPt, vind, RUTE.middel); r.dato = dato; RUTE.dager[d] = r; return r;
+}
+function lagRuter(fraDag) {
+  if (!GRAF) { toast('Cellene er ikke lastet ennå'); return; }
+  const o = state.oppsett; const t0 = performance.now();
+  for (let d = fraDag; d <= o.dager; d++) lagDag(d);
+  for (const d of Object.keys(RUTE.dager)) if (+d > o.dager) delete RUTE.dager[d];
+  lagreRuter(); oppdaterRuteLag(true); tegnRute();
+  const feil = Object.values(RUTE.dager).filter(r => r.feil).length;
+  toast(feil ? `${feil} dag(er) fikk ingen rute, se panelet` : `Ruter for dag ${fraDag}–${o.dager} er lagt (${((performance.now() - t0) / 1000).toFixed(1)} s)`);
+}
+let ruteAnim = 0;
+function oppdaterRuteLag(animer) {
+  if (!map || !map.getSource('rute-aktiv')) return;
+  const r = RUTE.dager[state.dag]; const linje = r && !r.feil ? { type: 'Feature', properties: { dag: state.dag }, geometry: { type: 'LineString', coordinates: r.glatt } } : null;
+  map.getSource('rute-aktiv').setData(linje ? { type: 'FeatureCollection', features: [linje] } : TOM_FC);
+  map.getSource('spor').setData(r && !r.feil ? { type: 'FeatureCollection', features: r.spor.map((s, i) => ({ type: 'Feature', properties: { jeger: i + 1 }, geometry: { type: 'LineString', coordinates: s } })) } : TOM_FC);
+  const andre = Object.values(RUTE.dager).filter(x => !x.feil && x.dag !== state.dag).map(x => ({ type: 'Feature', properties: { dag: x.dag }, geometry: { type: 'LineString', coordinates: x.glatt } }));
+  map.getSource('rute-andre').setData({ type: 'FeatureCollection', features: andre });
+  const besokt = []; if (state.grid) { const keys = new Map(); for (let d = 1; d < state.dag; d++) { const x = RUTE.dager[d]; if (x && x.besokt) for (const k of Object.keys(x.besokt)) keys.set(+k, state.dag - d); } if (keys.size) for (const f of state.grid.features) { const k = f.properties.i * 100000 + f.properties.j; if (keys.has(k)) besokt.push({ type: 'Feature', properties: { alder: keys.get(k) }, geometry: f.geometry }); } }
+  map.getSource('besokt').setData({ type: 'FeatureCollection', features: besokt });
+  for (const m of maalMarkers) m.remove(); maalMarkers = [];
+  if (r && !r.feil) for (const mål of r.maal) { const e = el('div', { class: 'maalmark', title: `Parti ${mål.nr}, verdi ${mål.verdi}` }, String(mål.nr)); maalMarkers.push(new maplibregl.Marker({ element: e, anchor: 'center' }).setLngLat([mål.lon, mål.lat]).addTo(map)); }
+  const F = lesFarger();
+  cancelAnimationFrame(ruteAnim);
+  if (linje && animer && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const t0 = performance.now(); const dur = 600;
+    const steg = () => { const p = Math.min(1, (performance.now() - t0) / dur); const e = 1 - Math.pow(1 - p, 3); map.setPaintProperty('rute-aktiv', 'line-gradient', ['step', ['line-progress'], F.accent, Math.max(0.0001, e), 'rgba(0,0,0,0)']); if (p < 1) ruteAnim = requestAnimationFrame(steg); else map.setPaintProperty('rute-aktiv', 'line-gradient', ['step', ['line-progress'], F.accent, 1.01, F.accent]); };
+    steg();
+  } else map.setPaintProperty('rute-aktiv', 'line-gradient', ['step', ['line-progress'], F.accent, 1.01, F.accent]);
+}
+function tidTekst(sek) { const h = Math.floor(sek / 3600), m = Math.round((sek % 3600) / 60); return h ? `${h} t ${String(m).padStart(2, '0')} min` : `${m} min`; }
+function tegnRute() {
+  const box = $('#rute'); if (!box || !state.oppsett) return; const o = state.oppsett; const r = RUTE.dager[state.dag]; const b = CFG.route.form[o.form];
+  const frag = document.createDocumentFragment();
+  if (!GRAF) { box.replaceChildren(el('div', { class: 'empty' }, 'Laster cellene før ruter kan legges.')); return; }
+  if (!r) {
+    frag.append(el('div', { class: 'empty' }, `Ingen rute for dag ${state.dag} ennå. Ruten legges innenfor ${b.maks_km} km, ${b.maks_hoydemeter} høydemeter og ${fmt.dec(o.timer)} timer, fra ${(punkt(o.start) || {}).navn || 'startpunktet'}.`));
+    frag.append(el('div', { class: 'actions-row' }, el('button', { class: 'btn btn-primary', onclick: () => lagRuter(1) }, `Lag ruter for dag 1–${o.dager}`)));
+    box.replaceChildren(frag); return;
+  }
+  if (r.feil) { frag.append(el('div', { class: 'empty' }, `Dag ${state.dag}: ${r.feil}`)); frag.append(el('div', { class: 'actions-row' }, el('button', { class: 'btn btn-primary', onclick: () => lagRuter(1) }, 'Lag ruter på nytt'))); box.replaceChildren(frag); return; }
+  const st = r.stats;
+  const tall = el('div'); tall.append(el('span', { class: 'num' }, fmt.dec(st.m / 1000), el('small', {}, 'km')), el('span', { class: 'num', style: 'margin-left: var(--s-4)' }, fmt.int(st.up), el('small', {}, 'hm')));
+  frag.append(tall);
+  const rows = [
+    ['Estimert tid', `${tidTekst(st.t)}${st.lunsj ? `, inkl. ${st.lunsj / 60} min lunsj i ${r.base.navn}` : ''}`],
+    ['Budsjett', `${b.maks_km} km, ${b.maks_hoydemeter} hm, ${fmt.dec(o.timer)} t`],
+    ['Partier', `${st.antallMaal} av ${st.kandidater} kandidater`],
+    ['Gangretning', r.retning],
+  ];
+  frag.append(...rows.map(([k, v]) => el('div', { class: 'row' }, el('span', { class: 'k' }, k), el('span', { class: 'v' }, v))));
+  const a = st.andel; const bar = el('div', { class: 'andel' }); for (const [key, col] of [['skog', '--storfugl'], ['apent', '--ink-3'], ['myr', '--mire'], ['annet', '--line']]) { const i = el('i'); i.style.width = `${a[key] * 100}%`; i.style.background = cssVar(col); bar.append(i); }
+  frag.append(el('div', { class: 'small', style: 'margin-top: var(--s-3)' }, `Terreng langs sveipet: skog ${fmt.int(a.skog * 100)} %, åpent ${fmt.int(a.apent * 100)} %, myr ${fmt.int(a.myr * 100)} %`), bar);
+  const sk = el('div', { class: 'stokk' }); const arterVis = r.art === 'blandet' ? ARTER : [r.art, ...ARTER.filter(x => x !== r.art)];
+  for (const art of arterVis) { const d = el('div'); d.append(el('span', { class: art === r.art || r.art === 'blandet' ? 'num-l' : 'muted' }, fmt.dec(st.stokk[art])), el('span', { class: 'small' }, ART_NAVN[art].toLowerCase())); sk.append(d); }
+  frag.append(el('div', { class: 'small', style: 'margin-top: var(--s-3)' }, `Forventet støkk, kalibrert mot ${CFG.route.stokk.tetthet_fugl_per_km2} fugl/km² og ${fmt.int(CFG.route.stokk.oppdagelsesandel_uten_hund * 100)} % oppdagelse uten hund`), sk);
+  if (r.base) {
+    frag.append(el('div', { class: 'small', style: 'margin-top: var(--s-3)' }, `Fra ${r.base.navn} til dagens partier`));
+    for (const m of r.maal) if (m.fraBase && isFinite(m.fraBase.t)) frag.append(el('div', { class: 'row' }, el('span', { class: 'k' }, `Parti ${m.nr}, ${m.h} moh, verdi ${m.verdi}${m.lunsjFor ? ', før lunsj' : ', etter lunsj'}`), el('span', { class: 'v' }, `${fmt.dec(m.fraBase.m / 1000)} km, ${tidTekst(m.fraBase.t)}`)));
+  } else {
+    for (const m of r.maal) frag.append(el('div', { class: 'row' }, el('span', { class: 'k' }, `Parti ${m.nr}, ${m.h} moh`), el('span', { class: 'v' }, `verdi ${m.verdi}`)));
+  }
+  frag.append(el('div', { class: 'actions-row' },
+    el('button', { class: 'btn btn-primary', onclick: () => lastNedGpx(state.dag) }, `GPX dag ${state.dag}`),
+    el('button', { class: 'btn', onclick: () => lastNedGpx(0) }, 'GPX alle dager'),
+    el('button', { class: 'btn', onclick: lastNedPng }, 'PNG av kartet'),
+    el('button', { class: 'btn', onclick: () => lagRuter(state.dag) }, state.dag < o.dager ? `Legg dag ${state.dag}–${o.dager} på nytt` : `Legg dag ${state.dag} på nytt`),
+    el('button', { class: 'btn btn-quiet', onclick: () => lagRuter(1) }, 'Alle dager på nytt')));
+  box.replaceChildren(frag);
+}
+
+// ============================================================ eksport
+function lastNed(filnavn, innhold, type) { const a = document.createElement('a'); a.href = typeof innhold === 'string' && innhold.startsWith('data:') ? innhold : URL.createObjectURL(new Blob([innhold], { type })); a.download = filnavn; document.body.append(a); a.click(); a.remove(); setTimeout(() => { if (a.href.startsWith('blob:')) URL.revokeObjectURL(a.href); }, 2000); }
+function xmlEsc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
+function gpxTrk(navn, coords, withEle) { return `<trk><name>${xmlEsc(navn)}</name><trkseg>${coords.map(c => `<trkpt lat="${c[1].toFixed(6)}" lon="${c[0].toFixed(6)}">${withEle && c[2] != null ? `<ele>${c[2]}</ele>` : ''}</trkpt>`).join('')}</trkseg></trk>`; }
+function gpxForDager(dager) {
+  let s = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Fugledashboard Bygland" xmlns="http://www.topografix.com/GPX/1/1"><metadata><name>Jakt Bygland ${xmlEsc(state.oppsett.dato)}</name><time>${new Date().toISOString()}</time></metadata>`;
+  for (const d of dager) {
+    const r = RUTE.dager[d]; if (!r || r.feil) continue;
+    s += `<wpt lat="${r.start.lat.toFixed(6)}" lon="${r.start.lon.toFixed(6)}"><name>${xmlEsc(`Dag ${d} start, ${r.start.navn || ''}`)}</name></wpt>`;
+    if (r.base) s += `<wpt lat="${r.base.lat.toFixed(6)}" lon="${r.base.lon.toFixed(6)}"><name>${xmlEsc(`${r.base.navn}, lunsj`)}</name></wpt>`;
+    for (const m of r.maal) s += `<wpt lat="${m.lat.toFixed(6)}" lon="${m.lon.toFixed(6)}"><ele>${m.h}</ele><name>${xmlEsc(`Dag ${d} parti ${m.nr}`)}</name><desc>${xmlEsc(`Verdi ${m.verdi}, ${ART_NAVN[r.art]}`)}</desc></wpt>`;
+    s += gpxTrk(`Dag ${d} rute, ${ART_NAVN[r.art]}, ${r.dato}`, r.path, true);
+    s += gpxTrk(`Dag ${d} spor jeger 1`, r.spor[0], false); s += gpxTrk(`Dag ${d} spor jeger 2`, r.spor[1], false);
+  }
+  return s + '</gpx>';
+}
+function lastNedGpx(dag) { const dager = dag ? [dag] : Object.keys(RUTE.dager).map(Number).sort(); if (!dager.some(d => RUTE.dager[d] && !RUTE.dager[d].feil)) { toast('Ingen rute å eksportere'); return; } lastNed(`jakt-bygland-${state.oppsett.dato}${dag ? `-dag${dag}` : ''}.gpx`, gpxForDager(dager), 'application/gpx+xml'); toast(dag ? `GPX for dag ${dag} lastet ned` : 'GPX for alle dager lastet ned'); }
+function lastNedPng() { try { map.once('idle', () => lastNed(`jakt-bygland-${state.oppsett.dato}-dag${state.dag}.png`, map.getCanvas().toDataURL('image/png'))); map.triggerRepaint(); } catch (e) { toast('Fikk ikke laget bilde av kartet'); } }
 
 // ============================================================ boot
 async function boot() {
