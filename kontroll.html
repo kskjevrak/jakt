@@ -29,6 +29,12 @@
   <p><span class="sw" style="background:#1565c0;border-radius:50%"></span>Startpunkt fra <code>config/start.json</code></p>
   <label><input type="checkbox" id="matrikkel"> Vis Kartverkets matrikkelkart (WMS, sannhetslag)</label>
   <label><input type="checkbox" id="labels" checked> Vis gnr/bnr</label>
+  <p style="margin-top:8px"><b>Habitatscore</b> (PNG fra <code>data/score_*.png</code>)</p>
+  <label><input type="radio" name="score" value="" checked> Ingen</label>
+  <label><input type="radio" name="score" value="lirype"> Lirype</label>
+  <label><input type="radio" name="score" value="orrfugl"> Orrfugl</label>
+  <label><input type="radio" name="score" value="storfugl"> Storfugl</label>
+  <label><input type="checkbox" id="myr"> Vis myr fra N50 (blå)</label>
 </div>
 <div id="click">Klikk i kartet for koordinater</div>
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
@@ -75,6 +81,19 @@ map.addControl(new maplibregl.NavigationControl(), 'top-right');
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 160 }));
 
 map.on('load', async () => {
+  for (const art of ['lirype', 'orrfugl', 'storfugl']) {
+    const meta = await (await fetch(`data/score_${art}.json`)).json();
+    map.addSource(`score-${art}`, { type: 'image', url: `data/score_${art}.png`, coordinates: meta.coordinates });
+    map.addLayer({ id: `score-${art}`, type: 'raster', source: `score-${art}`, layout: { visibility: 'none' },
+      paint: { 'raster-opacity': 0.9, 'raster-resampling': 'nearest' } }, 'nabo-fill');
+  }
+  map.addSource('myr', { type: 'geojson', data: 'data/myr_n50.geojson' });
+  map.addLayer({ id: 'myr-fill', type: 'fill', source: 'myr', layout: { visibility: 'none' },
+    paint: { 'fill-color': '#1e88e5', 'fill-opacity': 0.35 } }, 'nabo-fill');
+  document.querySelectorAll('input[name=score]').forEach(r => r.onchange = e => {
+    ['lirype', 'orrfugl', 'storfugl'].forEach(a => map.setLayoutProperty(`score-${a}`, 'visibility', a === e.target.value ? 'visible' : 'none'));
+  });
+  document.getElementById('myr').onchange = e => map.setLayoutProperty('myr-fill', 'visibility', e.target.checked ? 'visible' : 'none');
   const jf = await (await fetch('data/jaktfelt.geojson')).json();
   const p = jf.features[0].properties;
   const b = new maplibregl.LngLatBounds();
