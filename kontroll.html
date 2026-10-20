@@ -34,6 +34,7 @@
   <label><input type="radio" name="score" value="lirype"> Lirype</label>
   <label><input type="radio" name="score" value="orrfugl"> Orrfugl</label>
   <label><input type="radio" name="score" value="storfugl"> Storfugl</label>
+  <label><input type="radio" name="score" value="dominant"> Dominerende art (score &gt; 50): <span style="color:#b5651d">■</span> lirype <span style="color:#4b3f72">■</span> orrfugl <span style="color:#1f5e3b">■</span> storfugl</label>
   <label><input type="checkbox" id="myr"> Vis myr fra N50 (blå)</label>
 </div>
 <div id="click">Klikk i kartet for koordinater</div>
@@ -81,9 +82,10 @@ map.addControl(new maplibregl.NavigationControl(), 'top-right');
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 160 }));
 
 map.on('load', async () => {
-  for (const art of ['lirype', 'orrfugl', 'storfugl']) {
-    const meta = await (await fetch(`data/score_${art}.json`)).json();
-    map.addSource(`score-${art}`, { type: 'image', url: `data/score_${art}.png`, coordinates: meta.coordinates });
+  for (const art of ['lirype', 'orrfugl', 'storfugl', 'dominant']) {
+    const base = art === 'dominant' ? 'data/dominant' : `data/score_${art}`;
+    const meta = await (await fetch(`${base}.json`)).json();
+    map.addSource(`score-${art}`, { type: 'image', url: `${base}.png`, coordinates: meta.coordinates });
     map.addLayer({ id: `score-${art}`, type: 'raster', source: `score-${art}`, layout: { visibility: 'none' },
       paint: { 'raster-opacity': 0.9, 'raster-resampling': 'nearest' } }, 'nabo-fill');
   }
@@ -91,7 +93,7 @@ map.on('load', async () => {
   map.addLayer({ id: 'myr-fill', type: 'fill', source: 'myr', layout: { visibility: 'none' },
     paint: { 'fill-color': '#1e88e5', 'fill-opacity': 0.35 } }, 'nabo-fill');
   document.querySelectorAll('input[name=score]').forEach(r => r.onchange = e => {
-    ['lirype', 'orrfugl', 'storfugl'].forEach(a => map.setLayoutProperty(`score-${a}`, 'visibility', a === e.target.value ? 'visible' : 'none'));
+    ['lirype', 'orrfugl', 'storfugl', 'dominant'].forEach(a => map.setLayoutProperty(`score-${a}`, 'visibility', a === e.target.value ? 'visible' : 'none'));
   });
   document.getElementById('myr').onchange = e => map.setLayoutProperty('myr-fill', 'visibility', e.target.checked ? 'visible' : 'none');
   const jf = await (await fetch('data/jaktfelt.geojson')).json();

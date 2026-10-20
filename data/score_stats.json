@@ -1,69 +1,81 @@
 {
  "lirype": {
-  "middel_jaktfelt": 49.80829620361328,
-  "median_jaktfelt": 51.06026077270508,
-  "andel_over_60_pst": 40.03626913944923,
-  "ha_over_60": 856.6,
-  "andel_over_75_pst": 12.737198302454711,
+  "middel_jaktfelt": 54.233890533447266,
+  "median_jaktfelt": 55.83338165283203,
+  "andel_over_60_pst": 40.00121520312588,
+  "ha_over_60": 855.85,
+  "andel_over_75_pst": 8.703658696180524,
   "maks": 100.0,
   "middel_faktorer_jaktfelt": {
-   "hoydesone": 0.47823306918144226,
+   "hoydesone": 0.3886132538318634,
    "helning": 0.8197858333587646,
    "vier_bjorkekratt": 0.6142241358757019,
    "bekkedrag": 0.48444321751594543,
    "myrkant": 0.4821622669696808,
-   "apent_terreng": 0.6792400479316711,
+   "apent_terreng": 0.5965225100517273,
    "sol_morgen": 0.5928477644920349,
-   "straff_steinur": 0.9297910332679749,
-   "straff_topper": 0.8947171568870544
+   "straff_steinur": 0.9645112156867981,
+   "straff_topper": 0.9682913422584534
   }
  },
  "orrfugl": {
-  "middel_jaktfelt": 44.247047424316406,
-  "median_jaktfelt": 39.06866455078125,
-  "andel_over_60_pst": 28.744227785152088,
-  "ha_over_60": 615.0,
-  "andel_over_75_pst": 16.323917067060517,
-  "maks": 96.96969604492188,
+  "middel_jaktfelt": 35.30707550048828,
+  "median_jaktfelt": 28.480852127075195,
+  "andel_over_60_pst": 21.659593561292976,
+  "ha_over_60": 463.42,
+  "andel_over_75_pst": 10.540484959524388,
+  "maks": 97.05882263183594,
   "middel_faktorer_jaktfelt": {
-   "hoydesone": 0.5436263084411621,
-   "stor_myr_med_skog": 0.2376147359609604,
+   "hoydesone": 0.466453492641449,
+   "stor_myr_med_skog": 0.18076683580875397,
    "myrkant": 0.5344611406326294,
-   "arealtype": 0.5473347306251526,
-   "glissen_skog": 0.19339728355407715,
+   "arealtype": 0.4667728543281555,
+   "glissen_skog": 0.5774913430213928,
    "furu_bjork": 0.6963828802108765,
    "skoggrense": 0.6567788124084473,
    "hogstflate": 0.5270121693611145,
+   "flatt_myrlandskap": 0.5241124033927917,
    "straff_tett_skog": 0.9263207912445068,
-   "straff_steinur": 0.9385671019554138
+   "straff_steinur": 0.9385671019554138,
+   "straff_helning": 0.8259961009025574
   }
  },
  "storfugl": {
-  "middel_jaktfelt": 38.2214469909668,
-  "median_jaktfelt": 19.494909286499023,
-  "andel_over_60_pst": 32.562302529492044,
-  "ha_over_60": 696.69,
-  "andel_over_75_pst": 22.554637402082673,
+  "middel_jaktfelt": 36.031612396240234,
+  "median_jaktfelt": 17.206268310546875,
+  "andel_over_60_pst": 31.18117743835181,
+  "ha_over_60": 667.14,
+  "andel_over_75_pst": 19.71526855989082,
   "maks": 100.0,
   "middel_faktorer_jaktfelt": {
-   "hoydesone": 0.46371912956237793,
+   "hoydesone": 0.3239181935787201,
    "furudominert": 0.48007065057754517,
    "barskog_ar5": 0.45508283376693726,
-   "trehoyde": 0.3744645416736603,
+   "trehoyde": 0.30991509556770325,
    "bonitet": 0.6180009245872498,
    "blabaermark_proxy": 0.7048794627189636,
    "myr_naerhet": 0.7199116349220276,
    "bekkedal": 0.5919741988182068,
    "rygger": 0.2870420217514038,
    "glenner": 0.16420654952526093,
+   "gammelskog": 0.4458089768886566,
    "straff_tett_granplantefelt": 0.9927998781204224,
    "straff_ung_skog": 0.9607262015342712,
    "straff_apent": 0.7516372799873352
   }
  },
+ "_dominerende": {
+  "ha_per_art_jaktfelt": {
+   "lirype": 755.46,
+   "orrfugl": 251.47,
+   "storfugl": 629.72
+  },
+  "ha_ingen": 502.91,
+  "terskel": 50
+ },
  "_grid": {
   "celler": 14816,
-  "mb": 7.28
+  "mb": 7.4
  },
- "_bygget": "2026-10-20T13:06:12Z"
+ "_bygget": "2026-10-20T13:15:44Z"
 }

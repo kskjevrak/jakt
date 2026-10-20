@@ -9,7 +9,7 @@
     "Kilder: Kartverket NHM DTM (høyde, helning, eksposisjon, TPI), NIBIO AR5 WMS (arealtype, treslag, bonitet, grunnforhold),",
     "  NIBIO SR16 (treslag, middelhøyde, kronedekning, alder, bonitet H40), Kartverket N50 (bekker, vann, stier)."
   ],
-  "versjon": 1,
+  "versjon": 2,
   "opplosning_m": 10,
   "globalt": {
     "ikke_habitat": {
@@ -37,8 +37,8 @@
           "type": "trapes",
           "kilde": "hoyde_moh",
           "punkter": [
-            580,
-            650,
+            620,
+            680,
             900,
             960
           ],
@@ -99,7 +99,7 @@
           "klasser": {
             "50": 1.0,
             "60": 1.0,
-            "30": 0.6,
+            "30": 0.4,
             "23": 0.5,
             "22": 0.3,
             "21": 0.2
@@ -128,22 +128,22 @@
           "kilde": "ar5_grunnforhold",
           "klasser": {
             "41": 0.0,
-            "42": 0.5
+            "42": 0.75
           },
           "ellers": 1.0,
           "min": 0.2
         },
         "topper": {
-          "_doc": "unngå toppene: TPI 500 m over 15 m straffes, over 45 m gir min",
+          "_doc": "unngå toppene: TPI 500 m over 25 m straffes, over 60 m gir min",
           "type": "trapes",
           "kilde": "tpi500_m",
           "punkter": [
             -9999,
             -9999,
-            15,
-            45
+            25,
+            60
           ],
-          "min": 0.4
+          "min": 0.7
         }
       }
     },
@@ -152,14 +152,14 @@
       "farge": "#4b3f72",
       "faktorer": {
         "hoydesone": {
-          "_doc": "500–720 moh",
+          "_doc": "520–700 moh",
           "type": "trapes",
           "kilde": "hoyde_moh",
           "punkter": [
-            440,
-            500,
-            720,
-            790
+            470,
+            520,
+            700,
+            760
           ],
           "vekt": 3.0
         },
@@ -170,8 +170,8 @@
           "punkter": [
             0,
             0,
-            200,
-            500
+            150,
+            350
           ],
           "vekt": 3.0
         },
@@ -193,7 +193,7 @@
           "kilde": "arealtype_komb",
           "klasser": {
             "60": 1.0,
-            "50": 0.6,
+            "50": 0.4,
             "30": 0.6,
             "23": 0.4,
             "21": 0.2,
@@ -203,12 +203,12 @@
           "vekt": 1.5
         },
         "glissen_skog": {
-          "_doc": "SR16 kronedekning 15–45 prosent er glissen; tett skog og helt åpent gir mindre",
+          "_doc": "SR16 kronedekning 10–45 prosent er glissen; helt åpent (0) gir 0,67, tett skog faller mot 0 ved 75",
           "type": "trapes",
           "kilde": "sr16_kronedekning_pst",
           "punkter": [
-            0,
-            15,
+            -20,
+            10,
             45,
             75
           ],
@@ -237,7 +237,7 @@
             150,
             450
           ],
-          "vekt": 2.0
+          "vekt": 1.0
         },
         "hogstflate": {
           "_doc": "AR5 skog med SR16 middelhøyde under 4 m eller kronedekning under 15 prosent",
@@ -246,6 +246,18 @@
           "sann": 1.0,
           "usann": 0.5,
           "vekt": 1.0
+        },
+        "flatt_myrlandskap": {
+          "_doc": "flatt terreng foretrukket: full verdi til 8 grader, null ved 18",
+          "type": "trapes",
+          "kilde": "helning_grader",
+          "punkter": [
+            0,
+            0,
+            8,
+            18
+          ],
+          "vekt": 1.5
         }
       },
       "straff": {
@@ -270,6 +282,18 @@
           },
           "ellers": 1.0,
           "min": 0.3
+        },
+        "helning": {
+          "_doc": "bratt li straffes fra 15 grader, 28 grader gir min",
+          "type": "trapes",
+          "kilde": "helning_grader",
+          "punkter": [
+            -1,
+            -1,
+            15,
+            28
+          ],
+          "min": 0.3
         }
       }
     },
@@ -278,14 +302,14 @@
       "farge": "#1f5e3b",
       "faktorer": {
         "hoydesone": {
-          "_doc": "300–620 moh",
+          "_doc": "300–560 moh",
           "type": "trapes",
           "kilde": "hoyde_moh",
           "punkter": [
             240,
             300,
-            620,
-            690
+            560,
+            640
           ],
           "vekt": 3.0
         },
@@ -316,12 +340,12 @@
           "vekt": 1.0
         },
         "trehoyde": {
-          "_doc": "middelhøyde over 10 m (SR16, meter)",
+          "_doc": "middelhøyde over 13 m (SR16, meter), null under 8 m",
           "type": "trapes",
           "kilde": "sr16_hoyde_m",
           "punkter": [
-            6,
-            11,
+            8,
+            13,
             28,
             40
           ],
@@ -400,6 +424,18 @@
             85
           ],
           "vekt": 1.0
+        },
+        "gammelskog": {
+          "_doc": "SR16 bestandsalder: full verdi fra 80 år, null under 30 år",
+          "type": "trapes",
+          "kilde": "sr16_alder_aar",
+          "punkter": [
+            30,
+            80,
+            999,
+            999
+          ],
+          "vekt": 1.5
         }
       },
       "straff": {
@@ -464,7 +500,12 @@
       ]
     ],
     "utenfor_jaktfelt_alpha": 0.35,
-    "buffer_m": 500
+    "buffer_m": 500,
+    "dominerende": {
+      "_doc": "Lag 'dominerende art': arten med høyest score der høyeste score er over terskel, ellers tomt.",
+      "terskel": 50,
+      "alpha": 0.75
+    }
   },
   "variabler": {
     "hoyde_moh": "Høyde over havet, m (DTM 10 m)",

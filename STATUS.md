@@ -1,31 +1,39 @@
 # STATUS
 
-Sist oppdatert: 2026-10-20 (trinn 5 ferdig, venter på sjekk av habitat.json og score-PNG før nettsiden)
+Sist oppdatert: 2026-10-20 (habitatregler v2 kjørt, DESIGN.md skrevet, klar for index.html)
 
 ## Gjort
-- Plan, sjekkliste, repo pushet til `kskjevrak/jakt`. GitHub Pages slått på (main, rot) → https://kskjevrak.github.io/jakt/ . Actions er aktivert
-- Verktøy: `frontend-design` + `emil-design-eng` i `.claude/skills/` (øvrige skills og `.agents/` er gitignored), uv + Python 3.12 venv, pinnet `requirements.txt`
-- `scripts/download.py` + ett hentescript per kilde, alle seks hentet maskinelt (se `data/SOURCES.md`):
-  Teig (WFS + REST), N50 (Atom), DTM (NHM WCS 1.0.0, 2 m → 10 m), AR5 (WMS rasterisert 5 m, verifisert med GetFeatureInfo), SR16 (NIBIO API, 10 bånd klippet), Artskart (REST)
-- `scripts/build_jaktfelt.py`: jaktfelt 2139 ha, 33 teiger + 1 punktfeste, 37 naboteiger. Grensene verifisert av Knut mot matrikkelkartet. Teigen 49/3,5 behandles som ordinært jaktfelt
-- `config/start.json`: Mele, Garteskar, Troddebakken, Enden av vegen (alle verifisert)
-- `config/habitat.json`: regler, terskler og vekter per art (trapes/klasser/flagg + multiplikative straffer), fargeskala for PNG
-- `config/route.json`: form-budsjetter, gangfart, rotasjon, loggbonus, støkk-kalibrering (8,5 fugl/km²), værpunkter og vindterskel
-- `scripts/build_grid.py`: 10 m rastere i `raw/derived/` (høyde, helning, eksposisjon, TPI 150/500, AR5-klasser, SR16, avstander til myr/stor myr/bekk/vann/skoggrense/lauv, flagg). N50 → `data/vann.geojson`, `bekker.geojson`, `stier.geojson`, `myr_n50.geojson`
-- `scripts/build_scores.py`: `data/score_<art>.tif` (COG), `data/score_<art>.png` + `.json` (Web Mercator-overlegg, 0,9–1,1 MB), `raw/preview/score_<art>.png` (topo + score + jaktfelt), `data/grid.geojson` (14 816 celler à 50 m, 7,3 MB), `data/score_stats.json`
-- `scripts/build.py` kjører jaktfelt → grid → score
-- Score innenfor jaktfeltet: lirype middel 50 (40 % ≥ 60, 857 ha), orrfugl 44 (29 %, 615 ha), storfugl 38 (33 %, 697 ha)
+- Plan, sjekkliste, repo på `kskjevrak/jakt`. GitHub Pages (main, rot) → https://kskjevrak.github.io/jakt/ . Actions aktivert
+- Verktøy: `frontend-design` + `emil-design-eng` i `.claude/skills/` (øvrige skills og `.agents/` gitignored), uv + Python 3.12 venv, pinnet `requirements.txt`
+- Alle seks datakilder hentet maskinelt (`scripts/download.py`, detaljer i `data/SOURCES.md`)
+- Jaktfelt 2139 ha verifisert av Knut. Startpunkter i `config/start.json` verifisert
+- `config/habitat.json` v2 med Knuts justeringer (lirype 680–900, storfugl 300–560 + gammelskog, orrfugl 520–700 + flatt_myrlandskap + helningsstraff)
+- `config/route.json`: budsjetter, gangfart, rotasjon, loggbonus, støkk-kalibrering, værpunkter
+- `scripts/build_grid.py` → 10 m rastere i `raw/derived/`, N50-vektorer i `data/`
+- `scripts/build_scores.py` → `data/score_<art>.tif/.png/.json`, `data/dominant.tif/.png/.json` (dominerende art der score > 50), `data/grid.geojson` (14 816 celler, 7,4 MB, med `dom`), `data/score_stats.json`, forhåndsvisninger i `raw/preview/`
+- `scripts/compare_scores.py`: sammenligner grid mot forrige versjon, viser største endringer med nærmeste N50-stedsnavn og sjekker navngitte kjerneområder
+- `kontroll.html` viser score per art, dominerende art og N50-myr som lag
+- `DESIGN.md`: tokens for farger (lys/mørk), typografi (Schibsted Grotesk 400/700), avstand, bevegelse, kartstil og språk
+
+## Score v2 innenfor jaktfeltet
+| Art | ha ≥ 60 | mål | middel |
+|---|---|---|---|
+| Lirype | 856 | 650–850 | 54 |
+| Orrfugl | 463 | 200–350 | 35 |
+| Storfugl | 667 | 350–500 | 36 |
+
+Flyet og Litjønni er ikke orrfugl-kjerner i dataene (1–2 % myr, ingen myr over 1 ha med skog på to sider). Gytjønn og myrene øst for Bergebekken er det. Se forslag i chat / neste justering.
 
 ## Gjenstår
-- **Knut sjekker** `config/habitat.json` og forhåndsvisningene (`raw/preview/score_*.png` via lokal server)
-- Trinn 6: `DESIGN.md` → `index.html` (kart/lag, oppsett, vær, rute, rotasjon, logg, eksport, offline) + `sw.js`
+- Knut avgjør neste regeljustering (forslag med simulerte utfall er gitt)
+- Trinn 6: `index.html` + `sw.js` etter `DESIGN.md` (kart/lag → oppsett → vær → rute → rotasjon → logg → eksport → offline)
 - Trinn 7: Actions for værfallback (6 t) og ukentlig matrikkelsjekk
 - Trinn 8–9: README med oppdateringsrutine, `/briefing` og `/tune`
 
 ## Kjente problemer og valg
-- AR5 er ikke detaljkartlagt over skoggrensa: myr på platået mangler i AR5 (82 ha) men finnes i N50 (218 ha). Myrmasken er unionen; `arealtype_komb` setter åpen fastmark til myr der N50 har myr
-- FKB-AR5 vektor krever Norge digitalt-rolle; vi bruker WMS-rasterisering. Kantpiksler kan få nabo-klassen
-- Blåbærmark finnes ikke som datasett; storfugl-faktoren `blabaermark_proxy` bruker AR5 grunnforhold og er merket proxy
-- Artskart har bare 4 funn siste 15 år i området (3 orrfugl, 1 storfugl), så Artskart-laget blir tynt
-- Artskart-API: dato filtreres lokalt (server-filter gir 504); Kartverket NHM WCS fungerer bare i versjon 1.0.0
-- SR16-fylkesfilen (1,85 GB) ligger i `raw/` og er gitignored
+- AR5 er ikke detaljkartlagt over skoggrensa; myr = AR5-myr ∪ N50-myr, `arealtype_komb` setter åpen fastmark til myr der N50 har myr
+- FKB-AR5 vektor krever Norge digitalt-rolle; WMS-rasterisering brukes. Kantpiksler kan få nabo-klassen
+- Blåbærmark finnes ikke som datasett; `blabaermark_proxy` bruker AR5 grunnforhold
+- Artskart: bare 4 funn siste 15 år i området
+- Hakefjellets sørvest-side ligger utenfor jaktfeltet; «sørvestli» er tolket som sørvestvendte celler langs sørvestgrensa
+- Windows-konsollen trenger `PYTHONIOENCODING=utf-8` for norske tegn i scriptutskrift (compare_scores setter dette selv)

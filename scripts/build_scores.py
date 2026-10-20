@@ -180,11 +180,10 @@ def topo_mosaic(mt, width, height, tiles, z) -> np.ndarray:
     return mosaic
 
 
-def preview(art_id: str, art: dict, rgba: np.ndarray, topo: np.ndarray, mt, jaktfelt_3857, vis: dict, stats: dict) -> Path:
+def preview(name: str, rgba: np.ndarray, topo: np.ndarray, mt, jaktfelt_3857, legend: list, title: str, foot: str) -> Path:
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    from matplotlib.patches import Patch
 
     H, W = rgba.shape[1:]
     fig = plt.figure(figsize=(W / 100, H / 100 + 1.1), dpi=100)
@@ -199,21 +198,54 @@ def preview(art_id: str, art: dict, rgba: np.ndarray, topo: np.ndarray, mt, jakt
             xs, ys = zip(*[inv * (x, y) for x, y in ring.coords])
             ax.plot(xs, ys, color="#0b3d0b", linewidth=1.2)
     ax.set_xlim(0, W); ax.set_ylim(H, 0); ax.axis("off")
-    legend = [Patch(facecolor=s[1], alpha=min(1, s[2] + 0.1), label=f"≥ {s[0]}") for s in vis["stopp"]]
     fig.legend(handles=legend, loc="lower left", ncol=len(legend), frameon=False, bbox_to_anchor=(0.01, 0.0),
-               title=f"Habitatscore {art['navn'].lower()} (0–100). Innenfor jaktfelt: middel {stats['middel_jaktfelt']:.0f}, "
-                     f"{stats['andel_over_60_pst']:.0f} % av arealet ≥ 60 ({stats['ha_over_60']:.0f} ha)", title_fontsize=11)
-    fig.text(0.99, 0.02, "Bakgrunn: Kartverket topografisk (WMTS). Score < %d vises ikke." % vis["min_vist"],
-             ha="right", fontsize=8, color="#555")
+               title=title, title_fontsize=11)
+    fig.text(0.99, 0.02, foot, ha="right", fontsize=8, color="#555")
     PREVIEW.mkdir(parents=True, exist_ok=True)
-    out = PREVIEW / f"score_{art_id}.png"
+    out = PREVIEW / f"{name}.png"
     fig.savefig(out, dpi=100)
     plt.close(fig)
     return out
 
 
+def dominant_layer(scores: dict[str, np.ndarray], cfg: dict, grid: dict, mt, mw, mh, inside_m, buffer_m, topo, jf,
+                   mask_in: np.ndarray) -> dict:
+    """Species with the highest score where that score exceeds the threshold; 0 elsewhere, 255 unknown."""
+    from matplotlib.patches import Patch
+
+    arts = list(scores)
+    vis = cfg["visning"]["dominerende"]
+    stack = np.stack([np.nan_to_num(scores[a], nan=-1.0) for a in arts])
+    mx = stack.max(axis=0)
+    am = stack.argmax(axis=0)
+    dom = np.where(mx > vis["terskel"], am + 1, 0).astype(np.uint8)
+    dom[np.isnan(scores[arts[0]])] = 255
+    tr = from_origin(grid["minx"], grid["maxy"], RES, RES)
+    with rasterio.open(DATA / "dominant.tif", "w", driver="COG", width=grid["width"], height=grid["height"], count=1,
+                       dtype="uint8", crs=grid["crs"], transform=tr, nodata=255, compress="DEFLATE") as dst:
+        dst.write(dom, 1)
+        dst.update_tags(klasser=json.dumps({str(i + 1): a for i, a in enumerate(arts)}), terskel=vis["terskel"])
+    dm = warp_to(dom, grid, mt, mw, mh, 255, Resampling.nearest)
+    rgba = np.zeros((4, mh, mw), dtype=np.uint8)
+    for i, a in enumerate(arts):
+        r, g, b = hex_rgb(cfg["arter"][a]["farge"])
+        sel = dm == i + 1
+        rgba[0][sel], rgba[1][sel], rgba[2][sel] = r, g, b
+    alpha = np.where((dm > 0) & (dm < 255), vis["alpha"], 0.0)
+    alpha = np.where(inside_m > 0, alpha, np.where(buffer_m > 0, alpha * cfg["visning"]["utenfor_jaktfelt_alpha"], 0.0))
+    rgba[3] = (alpha * 255).astype(np.uint8)
+    save_png(DATA / "dominant.png", rgba)
+    ha = {a: float(((dom == i + 1) & mask_in).sum() * RES * RES / 1e4) for i, a in enumerate(arts)}
+    none_ha = float(((dom == 0) & mask_in).sum() * RES * RES / 1e4)
+    legend = [Patch(facecolor=cfg["arter"][a]["farge"], alpha=0.85, label=f"{cfg['arter'][a]['navn']} ({ha[a]:.0f} ha)") for a in arts]
+    preview("dominant", rgba, topo, mt, jf, legend,
+            f"Dominerende art der høyeste score > {vis['terskel']}. Ingen art over terskel: {none_ha:.0f} ha av jaktfeltet",
+            "Bakgrunn: Kartverket topografisk (WMTS).")
+    return {"ha_per_art_jaktfelt": ha, "ha_ingen": none_ha, "terskel": vis["terskel"]}
+
+
 # ------------------------------------------------------------------ 50 m grid
-def write_grid(scores: dict[str, np.ndarray], rasters: dict[str, np.ndarray], grid: dict) -> dict:
+def write_grid(scores: dict[str, np.ndarray], rasters: dict[str, np.ndarray], grid: dict, dom_terskel: float = 50) -> dict:
     f = 5  # 10 m -> 50 m
     H, W = grid["height"] // f, grid["width"] // f
 
@@ -265,6 +297,8 @@ def write_grid(scores: dict[str, np.ndarray], rasters: dict[str, np.ndarray], gr
     }
     for art, sc in scores.items():
         attrs["sc_" + art] = np.round(bmean(sc, nd=None))
+    sc_stack = np.stack([np.nan_to_num(attrs["sc_" + a], nan=-1.0) for a in scores])
+    attrs["dom"] = np.where(sc_stack.max(axis=0) > dom_terskel, sc_stack.argmax(axis=0) + 1, 0).astype(np.uint8)
     # geometry in WGS84
     xs = grid["minx"] + (np.arange(W) + 0.5) * f * RES
     ys = grid["maxy"] - (np.arange(H) + 0.5) * f * RES
@@ -297,7 +331,8 @@ def write_grid(scores: dict[str, np.ndarray], rasters: dict[str, np.ndarray], gr
                    "th": "SR16 middelhøyde m", "kr": "SR16 kronedekning %", "dm": "avstand myr m", "dsm": "avstand stor myr m",
                    "db": "avstand bekk m", "dv": "avstand vann m", "ds": "avstand skoggrense m", "dl": "avstand lauvskog m",
                    "inn": "andel av cellen innenfor jaktfeltet", "vann": "andel vann", "sti": "sti/traktorveg i cellen", "uk": "AR5 ukjent",
-                   "sc_<art>": "habitatscore 0–100 (null = ukjent)"},
+                   "sc_<art>": "habitatscore 0–100 (null = ukjent)",
+                   "dom": f"dominerende art der høyeste score > {dom_terskel}: 0 ingen, 1 lirype, 2 orrfugl, 3 storfugl"},
         "koder": json.loads((CONFIG / "habitat.json").read_text(encoding="utf-8"))["variabler"],
     }
     fc = {"type": "FeatureCollection", "metadata": meta, "features": feats}
@@ -352,10 +387,20 @@ def main() -> dict:
         (DATA / f"score_{art_id}.json").write_text(json.dumps({"coordinates": corners, "crs": "EPSG:4326",
                                                                "kilde_crs": "EPSG:3857", "px": [mw, mh],
                                                                "bygget": now_iso()}), encoding="utf-8")
-        pv = preview(art_id, art, rgba, topo, mt, jf, cfg["visning"], st)
+        from matplotlib.patches import Patch
+        legend = [Patch(facecolor=s[1], alpha=min(1, s[2] + 0.1), label=f"≥ {s[0]}") for s in cfg["visning"]["stopp"]]
+        pv = preview(f"score_{art_id}", rgba, topo, mt, jf, legend,
+                     f"Habitatscore {art['navn'].lower()} (0–100). Innenfor jaktfelt: middel {st['middel_jaktfelt']:.0f}, "
+                     f"{st['andel_over_60_pst']:.0f} % av arealet ≥ 60 ({st['ha_over_60']:.0f} ha)",
+                     "Bakgrunn: Kartverket topografisk (WMTS). Score < %d vises ikke." % cfg["visning"]["min_vist"])
         log(f"{art_id}: middel {st['middel_jaktfelt']:.1f}, >=60: {st['andel_over_60_pst']:.0f} % ({st['ha_over_60']:.0f} ha), "
             f"png {png.stat().st_size / 1e6:.2f} MB, preview {pv.name}")
-    g = write_grid(scores, rasters, grid)
+    stats["_dominerende"] = dominant_layer(scores, cfg, grid, mt, mw, mh, inside_m, buffer_m, topo, jf, mask_in)
+    (DATA / "dominant.json").write_text(json.dumps({"coordinates": corners, "crs": "EPSG:4326", "kilde_crs": "EPSG:3857",
+                                                    "px": [mw, mh], "klasser": {str(i + 1): a for i, a in enumerate(cfg["arter"])},
+                                                    "terskel": cfg["visning"]["dominerende"]["terskel"], "bygget": now_iso()}),
+                                        encoding="utf-8")
+    g = write_grid(scores, rasters, grid, cfg["visning"]["dominerende"]["terskel"])
     stats["_grid"] = g
     stats["_bygget"] = now_iso()
     (DATA / "score_stats.json").write_text(json.dumps(stats, indent=1, ensure_ascii=False), encoding="utf-8")
