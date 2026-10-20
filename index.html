@@ -54,7 +54,11 @@ button { cursor: pointer; border: 0; background: none; padding: 0; }
 .maplibregl-ctrl-attrib { font: var(--t-small); background: var(--panel) !important; color: var(--ink-2); }
 .maplibregl-ctrl-attrib a { color: var(--ink-2); }
 .maplibregl-ctrl-scale { font: var(--t-small); background: var(--panel); color: var(--ink); border-color: var(--ink-2) !important; }
-.maplibregl-popup-content { background: var(--panel-solid); color: var(--ink); border-radius: var(--r-panel); padding: var(--s-4) var(--s-4) var(--s-3); box-shadow: none; border: 1px solid var(--line); font: var(--t-body); max-width: 300px; }
+.maplibregl-popup { max-width: 280px !important; }
+.maplibregl-popup-content { background: var(--panel-solid); color: var(--ink); border-radius: var(--r-panel); padding: var(--s-4) var(--s-4) var(--s-3); box-shadow: none; border: 1px solid var(--line); font: var(--t-body); max-width: 280px; }
+.pop .celle { font: var(--t-small); color: var(--ink-3); margin-top: var(--s-2); }
+.pop .score b { color: var(--ink); }
+.pop .score span { color: var(--ink-2); }
 .maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--panel-solid); }
 .maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: var(--panel-solid); }
 .maplibregl-popup-close-button { color: var(--ink-2); font-size: 20px; width: 32px; height: 32px; right: 2px; top: 2px; }
@@ -251,7 +255,7 @@ dialog[open] { animation: dlg var(--d-panel) var(--ease-out); }
 <div class="lag" id="lag" hidden>
   <h2>Våre lag</h2>
   <div id="lag-vaare"></div>
-  <label class="field" style="margin-top:var(--s-2)"><span>Dekkevne for score</span><input class="range" type="range" id="score-op" min="20" max="100" value="85"></label>
+  <label class="field" style="margin-top:var(--s-2)"><span>Dekkevne for score</span><input class="range" type="range" id="score-op" min="20" max="100" value="55"></label>
   <h2>Grunnlag</h2>
   <div id="lag-grunnlag"></div>
   <h2>Sannhetslag fra kildene</h2>
@@ -303,7 +307,7 @@ const LS = { oppsett: 'jakt.oppsett', lag: 'jakt.lag', tema: 'jakt.tema', visnin
 const CFG = {};
 const state = {
   oppsett: null, dag: 1, art: 'lirype', sone: 'alle', tema: 'auto',
-  lag: { score: true, score10: false, dominant: false, ruter: true, besokt: true, kjerner: true, artskart: true, jaktfelt: true, nabo: true, vann: true, stier: true, myr: false, punkter: true, wmsAr5: false, wmsTreslag: false, wmsBonitet: false, wmsMatrikkel: false },
+  lag: { score: true, score10: false, dominant: false, ruter: true, besokt: true, kjerner: true, artskart: true, jaktfelt: true, nabo: true, vann: true, stier: true, myr: false, punkter: false, wmsAr5: false, wmsTreslag: false, wmsBonitet: false, wmsMatrikkel: false },
   grid: null, gridKjerner: false, velgIKart: null,
 };
 let map, stedMarkers = [], startMarkers = [], gridLoaded = false;
@@ -548,7 +552,6 @@ function artFarge(F) { return ['match', ['get', 'art'], 'lirype', F.lirype, 'orr
 function byggStil(metas, F, mork, lag) {
   const sources = {
     topo: { type: 'raster', tiles: WMTS('topo'), tileSize: 256, attribution: '© Kartverket' },
-    graa: { type: 'raster', tiles: WMTS('topograatone'), tileSize: 256, attribution: '© Kartverket' },
     'wms-ar5': { type: 'raster', tiles: [wmsUrl('https://wms.nibio.no/cgi-bin/ar5', 'Arealtype')], tileSize: 256, attribution: '© NIBIO' },
     'wms-treslag': { type: 'raster', tiles: [wmsUrl('https://wms.nibio.no/cgi-bin/sr16', 'SRRTRESLAG')], tileSize: 256, attribution: '© NIBIO' },
     'wms-bonitet': { type: 'raster', tiles: [wmsUrl('https://wms.nibio.no/cgi-bin/sr16', 'SRRBONITET')], tileSize: 256, attribution: '© NIBIO' },
@@ -563,13 +566,12 @@ function byggStil(metas, F, mork, lag) {
   for (const a of ARTER) sources[`score10-${a}`] = { type: 'image', url: `data/score_${a}.png`, coordinates: metas[a].coordinates };
   const vis = on => ({ visibility: on ? 'visible' : 'none' });
   const layers = [
-    { id: 'topo', type: 'raster', source: 'topo', layout: vis(!mork) },
-    { id: 'graa', type: 'raster', source: 'graa', layout: vis(mork), paint: { 'raster-brightness-max': 0.62, 'raster-contrast': 0.1 } },
+    { id: 'topo', type: 'raster', source: 'topo' },
     { id: 'wms-ar5', type: 'raster', source: 'wms-ar5', layout: vis(lag.wmsAr5), paint: { 'raster-opacity': 0.8 } },
     { id: 'wms-treslag', type: 'raster', source: 'wms-treslag', layout: vis(lag.wmsTreslag), paint: { 'raster-opacity': 0.8 } },
     { id: 'wms-bonitet', type: 'raster', source: 'wms-bonitet', layout: vis(lag.wmsBonitet), paint: { 'raster-opacity': 0.8 } },
-    ...ARTER.map(a => ({ id: `score10-${a}`, type: 'raster', source: `score10-${a}`, layout: vis(false), paint: { 'raster-opacity': 0.85, 'raster-resampling': 'nearest' } })),
-    { id: 'dominant10', type: 'raster', source: 'dominant10', layout: vis(false), paint: { 'raster-opacity': 0.85, 'raster-resampling': 'nearest' } },
+    ...ARTER.map(a => ({ id: `score10-${a}`, type: 'raster', source: `score10-${a}`, layout: vis(false), paint: { 'raster-opacity': 0.55, 'raster-resampling': 'nearest' } })),
+    { id: 'dominant10', type: 'raster', source: 'dominant10', layout: vis(false), paint: { 'raster-opacity': 0.55, 'raster-resampling': 'nearest' } },
     { id: 'score-grid', type: 'fill', source: 'grid', layout: vis(lag.score), paint: { 'fill-color': 'rgba(0,0,0,0)', 'fill-opacity': 0, 'fill-antialias': false } },
     { id: 'myr', type: 'fill', source: 'myr', layout: vis(lag.myr), paint: { 'fill-color': F.mire, 'fill-opacity': 0.35 } },
     { id: 'vann', type: 'fill', source: 'vann', layout: vis(lag.vann), paint: { 'fill-color': F.water, 'fill-opacity': 0.25 } },
@@ -617,46 +619,70 @@ async function initKart() {
   map.on('click', e => {
     if (state.velgIKart) { const o = { ...state.oppsett, egen: { lat: e.lngLat.lat, lon: e.lngLat.lng } }; const rolle = state.velgIKart; state.velgIKart = null; lagreOppsett(o); toast(`${rolle === 'start' ? 'Startpunkt' : 'Sluttpunkt'} satt i kartet`); return; }
     const f = map.queryRenderedFeatures(e.point, { layers: ['artskart', 'score-grid'] })[0];
-    if (!f) return;
-    if (f.layer.id === 'artskart') { const p = f.properties; new maplibregl.Popup({ offset: 10, className: 'pop' }).setLngLat(e.lngLat).setHTML(`<div class="pop"><h3>${ART_NAVN[p.art] || p.art}</h3><p>${p.dato || ''}${p.antall ? `, ${p.antall} individ` : ''}. Presisjon ${p.presisjon_m ?? '?'} m.<br>${p.kilde || ''}</p></div>`).addTo(map); return; }
-    const p = f.properties; const k = CFG.habitat.variabler;
-    const rader = [[`Rype ${p.sc_lirype ?? '–'}`, `Orrfugl ${p.sc_orrfugl ?? '–'}`, `Storfugl ${p.sc_storfugl ?? '–'}`].join(', '),
-      `${p.h} moh, ${p.s}° helning${p.asp >= 0 ? `, eksposisjon ${p.asp}°` : ''}`, `Arealtype ${p.at}, treslag ${p.tr}, bonitet ${p.bo}`,
-      `${p.dm} m til myr, ${p.db} m til bekk, ${p.ds} m til skoggrense`, p.inn >= 0.5 ? 'Innenfor jaktfeltet' : 'Utenfor jaktfeltet'];
-    new maplibregl.Popup({ offset: 6, className: 'pop' }).setLngLat(e.lngLat).setHTML(`<div class="pop"><h3>Celle ${p.i},${p.j}</h3><p>${rader.join('<br>')}</p><p class="small">Koder: se variabler i config/habitat.json</p></div>`).addTo(map);
+    if (!f) { lukkPopup(); return; }
+    if (f.layer.id === 'artskart') { const p = f.properties; visPopup(new maplibregl.Popup({ offset: 10, className: 'pop', maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(`<div class="pop"><h3>${ART_NAVN[p.art] || p.art}</h3><p>${p.dato || ''}${p.antall ? `, ${p.antall} individ` : ''}. Presisjon ${p.presisjon_m ?? '?'} m.<br>${p.kilde || ''}</p></div>`)); return; }
+    visPopup(new maplibregl.Popup({ offset: 6, className: 'pop', maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(cellePopupHtml(f.properties)));
   });
   map.on('mouseenter', 'artskart', () => { map.getCanvas().style.cursor = 'pointer'; });
   map.on('mouseleave', 'artskart', () => { map.getCanvas().style.cursor = ''; });
+}
+// ---- popups: one at a time, readable words instead of codes
+let aktivPopup = null;
+function lukkPopup() { if (aktivPopup) { aktivPopup.remove(); aktivPopup = null; } }
+function visPopup(pop) { lukkPopup(); aktivPopup = pop; pop.on('close', () => { if (aktivPopup === pop) aktivPopup = null; }); pop.addTo(map); return pop; }
+const ORD = {
+  at: { 11: 'bebygd', 12: 'samferdsel', 21: 'fulldyrka', 22: 'overflatedyrka', 23: 'innmarksbeite', 30: 'skog', 50: 'åpen fastmark', 60: 'myr', 70: 'snø og is', 81: 'vann', 82: 'hav', 0: 'ukjent arealtype' },
+  tr: { 31: 'barskog', 32: 'lauvskog', 33: 'blandingsskog', 39: 'ikke tresatt', 0: '' },
+  st: { 1: 'gran', 2: 'furu', 3: 'lauv', 0: '' },
+  bo: { 11: 'impediment', 12: 'lav bonitet', 13: 'middels bonitet', 14: 'høg bonitet', 15: 'særs høg bonitet', 0: '' },
+  gf: { 41: 'blokkmark', 42: 'fjell i dagen', 43: 'grunnlendt', 44: 'jorddekt', 45: 'organisk jord', 46: 'konstruert', 0: '' },
+};
+const rund10 = v => (v == null ? null : Math.round(v / 10) * 10);
+function cellePopupHtml(p) {
+  const tre = p.at === 30 ? (ORD.st[p.st] || ORD.tr[p.tr] || '') : '';
+  const tittel = [`${fmt.int(p.h)} moh`, ORD.at[p.at] || 'ukjent', tre].filter(Boolean).join(', ');
+  const aktiv = state.art === 'blandet' ? ARTER.reduce((a, c) => ((p['sc_' + c] ?? -1) > (p['sc_' + a] ?? -1) ? c : a), 'lirype') : state.art;
+  const score = ARTER.map(a => { const v = p[scoreKey(a)]; const txt = `${ART_NAVN[a]} ${v == null ? '–' : fmt.int(v)}`; return a === aktiv ? `<b>${txt}</b>` : `<span>${txt}</span>`; }).join(', ');
+  const asp = p.asp >= 0 ? `, ${kompass(rund10(p.asp))} ${rund10(p.asp) % 360}°` : '';
+  const rader = [
+    `${fmt.int(p.s)}° helning${asp}`,
+    [ORD.bo[p.bo], ORD.gf[p.gf]].filter(Boolean).join(', '),
+    `Myr ${rund10(p.dm)} m, bekk ${rund10(p.db)} m, skoggrense ${rund10(p.ds)} m`,
+    p.inn >= 0.5 ? 'Innenfor jaktfeltet' : 'Utenfor jaktfeltet',
+  ].filter(Boolean);
+  return `<div class="pop"><h3>${tittel}</h3><p class="score">${score}</p><p>${rader.join('<br>')}</p><div class="celle">Celle ${p.i},${p.j}</div></div>`;
 }
 function hytteSvg() { return `<svg viewBox="0 0 34 34" aria-hidden="true"><path d="M5 17 19 5l10 9v15H5Z" fill="var(--accent)"/><path d="M3 17.5 19 4l12 10.5" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 29V21h6v8" fill="var(--accent-ink)" opacity=".9"/><path d="M22 20h4v4h-4z" fill="var(--accent-ink)" opacity=".9"/></svg>`; }
 function tegnStedMarkorer() {
   for (const m of stedMarkers) m.remove(); stedMarkers = [];
   for (const s of CFG.steder.steder) {
     const e = el('button', { class: 'sted', 'aria-label': s.navn, title: s.navn }); e.innerHTML = hytteSvg();
-    const pop = new maplibregl.Popup({ offset: 26, className: 'pop' }).setHTML(`<div class="pop"><h3>${s.navn}</h3><p>${s.popup}</p><div class="actions">${s.roller.includes('start') ? '<button class="btn btn-small" data-r="start">Bruk som start</button>' : ''}${s.roller.includes('slutt') ? '<button class="btn btn-small" data-r="slutt">Bruk som slutt</button>' : ''}${s.roller.includes('base') ? '<button class="btn btn-small" data-r="base">Sløyfe om bua</button>' : ''}</div></div>`);
+    const pop = new maplibregl.Popup({ offset: 26, className: 'pop', maxWidth: '280px' }).setHTML(`<div class="pop"><h3>${s.navn}</h3><p>${s.popup}</p><div class="actions">${s.roller.includes('start') ? '<button class="btn btn-small" data-r="start">Bruk som start</button>' : ''}${s.roller.includes('slutt') ? '<button class="btn btn-small" data-r="slutt">Bruk som slutt</button>' : ''}${s.roller.includes('base') ? '<button class="btn btn-small" data-r="base">Sløyfe om bua</button>' : ''}</div></div>`);
     pop.on('open', () => { pop.getElement().querySelectorAll('[data-r]').forEach(b => b.addEventListener('click', () => { const o = { ...state.oppsett }; if (b.dataset.r === 'start') o.start = s.id; if (b.dataset.r === 'slutt') o.slutt = s.id; if (b.dataset.r === 'base') o.sloyfe = true; lagreOppsett(o); pop.remove(); toast(b.dataset.r === 'base' ? `Ruten legges som sløyfe om ${s.navn}` : `${s.navn} er ${b.dataset.r}`); })); });
-    stedMarkers.push(new maplibregl.Marker({ element: e, anchor: 'center' }).setLngLat([s.lon, s.lat]).setPopup(pop).addTo(map));
+    // the marker handles its own click; the map must not also open a cell popup underneath
+    e.addEventListener('click', ev => { ev.stopPropagation(); if (pop.isOpen()) { pop.remove(); } else { visPopup(pop.setLngLat([s.lon, s.lat])); } });
+    stedMarkers.push(new maplibregl.Marker({ element: e, anchor: 'center' }).setLngLat([s.lon, s.lat]).addTo(map));
   }
 }
 function oppdaterStartMarkorer() {
+  // only the day's chosen start and end are shown; the other start points appear when the layer "Alle startpunkter" is on
   for (const m of startMarkers) m.remove(); startMarkers = [];
-  if (!state.lag.punkter) return;
-  const o = state.oppsett;
+  const o = state.oppsett; if (!o) return;
   const pts = [...CFG.start.startpunkter.filter(s => s.lat != null)];
-  if (o?.egen) pts.push({ id: 'egen', navn: 'Eget punkt', lat: o.egen.lat, lon: o.egen.lon });
+  if (o.egen) pts.push({ id: 'egen', navn: 'Eget punkt', lat: o.egen.lat, lon: o.egen.lon });
   for (const s of pts) {
-    const valgt = o && (o.start === s.id || (o.slutt === 'samme' ? o.start === s.id : o.slutt === s.id));
-    const e = el('div', { class: 'startpkt' + (valgt ? ' valgt' : ''), title: s.navn }); e.append(el('i'), el('span', {}, s.navn));
-    e.addEventListener('click', () => { const op = { ...state.oppsett, start: s.id }; lagreOppsett(op); toast(`${s.navn} er startpunkt`); });
+    const erStart = o.start === s.id, erSlutt = o.slutt === 'samme' ? erStart : o.slutt === s.id;
+    if (!state.lag.punkter && !erStart && !erSlutt) continue;
+    const e = el('div', { class: 'startpkt' + (erStart || erSlutt ? ' valgt' : ''), title: s.navn }); e.append(el('i'), el('span', {}, erStart && erSlutt ? `${s.navn}, start og slutt` : erStart ? `${s.navn}, start` : erSlutt ? `${s.navn}, slutt` : s.navn));
+    e.addEventListener('click', ev => { ev.stopPropagation(); lukkPopup(); const op = { ...state.oppsett, start: s.id }; lagreOppsett(op); toast(`${s.navn} er startpunkt`); });
     startMarkers.push(new maplibregl.Marker({ element: e, anchor: 'center' }).setLngLat([s.lon, s.lat]).addTo(map));
   }
-  for (const m of stedMarkers) m.getElement().classList.toggle('valgt', false);
 }
 
 // ============================================================ lagvelger
 const LAGDEF = {
   vaare: [['score', 'Habitatscore, 50 m-celler', null], ['score10', 'Score i 10 m (detaljbilde)', null], ['dominant', 'Dominerende art, 10 m', null], ['ruter', 'Andre dagers ruter', '--ink-2'], ['besokt', 'Sist besøkt, skravur', '--ink-2'], ['kjerner', 'Kjerneområder fra lokalkunnskap', '--accent'], ['artskart', 'Funn fra Artskart', '--orrfugl']],
-  grunnlag: [['jaktfelt', 'Jaktfelt og teiger', '--ink'], ['nabo', 'Naboteiger, der vi ikke går', '--warn'], ['vann', 'Vann og bekker', '--water'], ['stier', 'Stier og veger', '--ink-2'], ['myr', 'Myr fra N50', '--mire'], ['punkter', 'Startpunkter', '--ink']],
+  grunnlag: [['jaktfelt', 'Jaktfelt og teiger', '--ink'], ['nabo', 'Naboteiger, der vi ikke går', '--warn'], ['vann', 'Vann og bekker', '--water'], ['stier', 'Stier og veger', '--ink-2'], ['myr', 'Myr fra N50', '--mire'], ['punkter', 'Alle startpunkter, ikke bare dagens', '--ink']],
   sannhet: [['wmsAr5', 'NIBIO AR5 arealtype', null], ['wmsTreslag', 'NIBIO SR16 treslag', null], ['wmsBonitet', 'NIBIO SR16 bonitet', null], ['wmsMatrikkel', 'Kartverket matrikkelkart', null]],
 };
 const LAGKART = { score: ['score-grid'], ruter: ['rute-andre'], besokt: ['besokt'], kjerner: ['kjerner-fill', 'kjerner-line'], artskart: ['artskart'], jaktfelt: ['jaktfelt', 'teiger'], nabo: ['nabo-fill', 'nabo-line'], vann: ['vann', 'bekker'], stier: ['stier'], myr: ['myr'], wmsAr5: ['wms-ar5'], wmsTreslag: ['wms-treslag'], wmsBonitet: ['wms-bonitet'], wmsMatrikkel: ['wms-matrikkel'] };
@@ -687,8 +713,7 @@ function brukTema() {
   document.documentElement.dataset.theme = state.tema;
   document.documentElement.classList.toggle('dark-auto', state.tema === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
   if (!map?.getLayer('topo')) return;
-  map.setLayoutProperty('topo', 'visibility', erMork() ? 'none' : 'visible');
-  map.setLayoutProperty('graa', 'visibility', erMork() ? 'visible' : 'none');
+  // the topo map keeps its normal colours in both modes; dark mode only restyles panels, text and our own lines
   requestAnimationFrame(() => {
     const F = lesFarger();
     const paints = { jaktfelt: ['line-color', F.ink], teiger: ['line-color', F.ink], stier: ['line-color', F.ink], 'nabo-line': ['line-color', F.warn], vann: ['fill-color', F.water], bekker: ['line-color', F.water], myr: ['fill-color', F.mire], 'kjerner-fill': ['fill-color', F.accent], 'kjerner-line': ['line-color', F.accent] };
@@ -845,34 +870,96 @@ function byggGraf(grid, cfgRoute) {
   }
   return { nodes, idx };
 }
-function dijkstra(graf, src) {
-  const N = graf.nodes.length; const t = new Float64Array(N).fill(Infinity), m = new Float64Array(N), up = new Float64Array(N), prev = new Int32Array(N).fill(-1);
+function dijkstra(graf, src, mult) {
+  // t = penalised cost used for path choice, tr = real walking time along the chosen path
+  const N = graf.nodes.length; const t = new Float64Array(N).fill(Infinity), tr = new Float64Array(N), m = new Float64Array(N), up = new Float64Array(N), prev = new Int32Array(N).fill(-1);
   const heap = []; const push = (k, v) => { heap.push([k, v]); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
   const pop = () => { const top = heap[0]; const last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let s = i; if (l < heap.length && heap[l][0] < heap[s][0]) s = l; if (r < heap.length && heap[r][0] < heap[s][0]) s = r; if (s === i) break; [heap[s], heap[i]] = [heap[i], heap[s]]; i = s; } } return top; };
   t[src] = 0; push(0, src);
-  while (heap.length) { const [d, u] = pop(); if (d > t[u]) continue; for (const e of graf.nodes[u].nb) { const nd = d + e.t; if (nd < t[e.to]) { t[e.to] = nd; m[e.to] = m[u] + e.dist; up[e.to] = up[u] + Math.max(0, e.dh); prev[e.to] = u; push(nd, e.to); } } }
-  return { t, m, up, prev };
+  while (heap.length) { const [d, u] = pop(); if (d > t[u]) continue; for (const e of graf.nodes[u].nb) { const nd = d + e.t * (mult ? mult[e.to] : 1); if (nd < t[e.to]) { t[e.to] = nd; tr[e.to] = tr[u] + e.t; m[e.to] = m[u] + e.dist; up[e.to] = up[u] + Math.max(0, e.dh); prev[e.to] = u; push(nd, e.to); } } }
+  return { t, tr, m, up, prev };
 }
 function stiTil(D, target) { const out = []; for (let v = target; v !== -1; v = D.prev[v]) out.push(v); return out.reverse(); }
 function naermesteNode(graf, pt) { const [x, y] = toXY(pt.lon, pt.lat); let best = -1, bd = Infinity; for (let i = 0; i < graf.nodes.length; i++) { const n = graf.nodes[i]; if (!n.ok) continue; const d = Math.hypot(n.x - x, n.y - y); if (d < bd) { bd = d; best = i; } } return best; }
 function nodesWithin(graf, ix, r) { const n = graf.nodes[ix]; const out = []; const c = Math.ceil(r / 50); for (let di = -c; di <= c; di++) for (let dj = -c; dj <= c; dj++) { if (Math.hypot(di, dj) * 50 > r + 1) continue; const m = graf.idx.get((n.i + di) * 100000 + (n.j + dj)); if (m != null) out.push(m); } return out; }
 function scoreAv(n, art) { if (art === 'blandet') { let mx = -1; for (const a of ARTER) { const v = n.p[scoreKey(a)]; if (v != null && v > mx) mx = v; } return mx; } const v = n.p[scoreKey(art)]; return v == null ? -1 : v; }
 function rotasjon(k, dag, tidligere, cfgRot) { let f = 1; for (let d = 1; d < dag; d++) { const r = tidligere[d]; if (r && r.besokt && r.besokt[k]) f = Math.min(f, 1 - cfgRot.styrke * Math.pow(0.5, (dag - d) / cfgRot.halveringstid_dager)); } return f; }
-function velgMaal(graf, art, dag, tidligere, cfg) {
-  const R_V = 200, R_S = 450; const cands = [];
-  for (let ix = 0; ix < graf.nodes.length; ix++) {
-    const n = graf.nodes[ix]; if (!n.ok) continue; const s = scoreAv(n, art); if (s < cfg.rute.min_score_maal) continue;
-    const v = s * rotasjon(n.k, dag, tidligere, cfg.rotasjon); if (v < cfg.rute.min_score_maal * 0.6) continue;
-    let naer = false; for (let d = 1; d < dag && !naer; d++) { const r = tidligere[d]; if (r && r.naer && r.naer[n.k]) naer = true; } if (naer) continue;
-    cands.push({ ix, v });
+let HABITAT = null;  // set from config/habitat.json at boot; used for the elevation-zone gate on target fields
+function iHoydesone(n, art, cfg) {
+  if (!cfg.rute.krev_hoydesone || !HABITAT) return true;
+  const arter = art === 'blandet' ? ARTER : [art];
+  return arter.some(a => { const f = HABITAT.arter[a] && HABITAT.arter[a].faktorer.hoydesone; if (!f) return true; const p = f.punkter; return n.h >= p[0] + (p[1] - p[0]) * 0.25 && n.h <= p[3] - (p[3] - p[2]) * 0.25; });
+}
+function finnFelter(graf, art, dag, tidligere, cfg) {
+  // contiguous fields of cells scoring above the threshold for the day's species (after rotation penalty), inside its elevation zone
+  const N = graf.nodes.length; const val = new Float32Array(N).fill(-1); const alle = [];
+  for (let ix = 0; ix < N; ix++) {
+    const n = graf.nodes[ix]; if (!n.ok) continue; const s = scoreAv(n, art); if (s < 0) continue; if (!iHoydesone(n, art, cfg)) continue;
+    let naer = false; for (let d = 1; d < dag && !naer; d++) { const r = tidligere[d]; if (r && r.naer && r.naer[n.k]) naer = true; }
+    if (naer) continue; val[ix] = s * rotasjon(n.k, dag, tidligere, cfg.rotasjon); alle.push(val[ix]);
   }
-  cands.sort((a, b) => b.v - a.v); const maal = []; const tatt = new Uint8Array(graf.nodes.length);
-  for (const c of cands) {
-    if (maal.length >= cfg.rute.maks_antall_maal) break; if (tatt[c.ix]) continue; const n = graf.nodes[c.ix]; let sum = 0, cnt = 0;
-    for (const o of cands) { const m = graf.nodes[o.ix]; const d = Math.hypot(m.x - n.x, m.y - n.y); if (d <= R_S) tatt[o.ix] = 1; if (d <= R_V) { sum += o.v; cnt++; } }
-    maal.push({ ix: c.ix, verdi: sum, topp: c.v, celler: cnt });
+  // threshold: the red cores of the day, i.e. the upper quantile of today's scores, never below min_score_maal
+  alle.sort((a, b) => a - b); const kv = alle.length ? alle[Math.min(alle.length - 1, Math.floor(alle.length * (cfg.rute.felt_kvantil || 0.75)))] : 0;
+  const thr = Math.max(cfg.rute.min_score_maal, kv);
+  const comp = new Int32Array(N).fill(-1); const comps = [];
+  for (let ix = 0; ix < N; ix++) {
+    if (val[ix] < thr || comp[ix] >= 0) continue; const id = comps.length; const cells = []; const stack = [ix]; comp[ix] = id;
+    while (stack.length) { const u = stack.pop(); cells.push(u); for (const e of graf.nodes[u].nb) if (comp[e.to] < 0 && val[e.to] >= thr) { comp[e.to] = id; stack.push(e.to); } }
+    comps.push(cells);
   }
-  return maal;
+  const out = [];
+  for (const cells of comps) { if (cells.length < cfg.rute.felt_min_celler) continue; if (cells.length <= cfg.rute.felt_maks_celler) out.push(cells); else out.push(...kmeans(graf, cells, Math.ceil(cells.length / cfg.rute.felt_maks_celler))); }
+  return out.filter(c => c.length >= cfg.rute.felt_min_celler).map(cells => lagFelt(graf, cells, val));
+}
+function kmeans(graf, cells, k) {
+  const pts = cells.map(ix => [graf.nodes[ix].x, graf.nodes[ix].y]); const cent = [pts[0]];
+  while (cent.length < k) { let best = 0, bd = -1; pts.forEach((p, i) => { let d = Infinity; for (const c of cent) d = Math.min(d, Math.hypot(p[0] - c[0], p[1] - c[1])); if (d > bd) { bd = d; best = i; } }); cent.push(pts[best]); }
+  const lab = new Int32Array(pts.length);
+  for (let it = 0; it < 12; it++) {
+    pts.forEach((p, i) => { let b = 0, bd = Infinity; cent.forEach((c, j) => { const d = Math.hypot(p[0] - c[0], p[1] - c[1]); if (d < bd) { bd = d; b = j; } }); lab[i] = b; });
+    for (let j = 0; j < k; j++) { let sx = 0, sy = 0, n = 0; pts.forEach((p, i) => { if (lab[i] === j) { sx += p[0]; sy += p[1]; n++; } }); if (n) cent[j] = [sx / n, sy / n]; }
+  }
+  const groups = Array.from({ length: k }, () => []); cells.forEach((ix, i) => groups[lab[i]].push(ix)); return groups.filter(g => g.length);
+}
+function lagFelt(graf, cells, val) {
+  let mx = 0, my = 0; for (const ix of cells) { mx += graf.nodes[ix].x; my += graf.nodes[ix].y; } mx /= cells.length; my /= cells.length;
+  let sxx = 0, sxy = 0, syy = 0, sum = 0; for (const ix of cells) { const dx = graf.nodes[ix].x - mx, dy = graf.nodes[ix].y - my; sxx += dx * dx; sxy += dx * dy; syy += dy * dy; sum += val[ix]; }
+  const ang = 0.5 * Math.atan2(2 * sxy, sxx - syy); const u = [Math.cos(ang), Math.sin(ang)];
+  return { cells, mx, my, u, v: [-u[1], u[0]], middel: sum / cells.length, sum, size: cells.length, set: new Set(cells), lines: null };
+}
+function rettLinje(graf, a, b) {
+  // straight 8-connected walk through the lattice from node a to node b; null if it hits a blocked or missing cell
+  const na = graf.nodes[a], nb = graf.nodes[b]; let i = na.i, j = na.j; const di = Math.sign(nb.i - i), dj = Math.sign(nb.j - j);
+  const ni = Math.abs(nb.i - i), nj = Math.abs(nb.j - j); const seg = [a]; let err = ni - nj, ci = i, cj = j;
+  let kost = { m: 0, up: 0, t: 0 }; let guard = ni + nj + 2;
+  while ((ci !== nb.i || cj !== nb.j) && guard-- > 0) {
+    const e2 = 2 * err; let si = 0, sj = 0; if (e2 > -nj) { err -= nj; si = di; } if (e2 < ni) { err += ni; sj = dj; }
+    ci += si; cj += sj; const ix = graf.idx.get(ci * 100000 + cj); if (ix == null || !graf.nodes[ix].ok) return null;
+    const prev = seg[seg.length - 1]; const edge = graf.nodes[prev].nb.find(e => e.to === ix); if (!edge) return null;
+    kost.m += edge.dist; kost.up += Math.max(0, edge.dh); kost.t += edge.t; seg.push(ix);
+  }
+  return seg[seg.length - 1] === b ? { seg, kost } : null;
+}
+function sveipLinjer(graf, felt, spacing) {
+  // sweep lines across the field, perpendicular to its long axis, at least `spacing` metres apart; each ends in the outermost cells
+  const proj = felt.cells.map(ix => { const n = graf.nodes[ix]; const dx = n.x - felt.mx, dy = n.y - felt.my; return { ix, a: dx * felt.u[0] + dy * felt.u[1], b: dx * felt.v[0] + dy * felt.v[1] }; });
+  let amin = Infinity, amax = -Infinity; for (const p of proj) { if (p.a < amin) amin = p.a; if (p.a > amax) amax = p.a; }
+  const nL = Math.max(1, Math.floor((amax - amin + 50) / spacing)); const step = (amax - amin) / nL; const lines = [];
+  for (let k = 0; k < nL; k++) {
+    const a = amin + step * (k + 0.5); const halv = Math.max(step, 60) / 2 + 1; let lo = null, hi = null;
+    for (const p of proj) { if (Math.abs(p.a - a) > halv) continue; if (!lo || p.b < lo.b) lo = p; if (!hi || p.b > hi.b) hi = p; }
+    if (!lo || !hi || lo.ix === hi.ix) continue;
+    if (Math.hypot(graf.nodes[lo.ix].x - graf.nodes[hi.ix].x, graf.nodes[lo.ix].y - graf.nodes[hi.ix].y) < 100) continue;
+    lines.push({ a, lo: lo.ix, hi: hi.ix });
+  }
+  return lines;
+}
+function overlappProsent(graf, path) {
+  // share of route length that lies within 100 m of another part of the route (more than 150 m apart along the route)
+  const pts = []; let s = 0;
+  for (let i = 0; i < path.length; i++) { const n = graf.nodes[path[i]]; if (i) { const p = graf.nodes[path[i - 1]]; const L = Math.hypot(n.x - p.x, n.y - p.y); const steps = Math.max(1, Math.round(L / 10)); for (let k = 1; k <= steps; k++) { s += L / steps; pts.push([p.x + (n.x - p.x) * k / steps, p.y + (n.y - p.y) * k / steps, s]); } } else pts.push([n.x, n.y, 0]); }
+  let hit = 0; for (let i = 0; i < pts.length; i++) { const a = pts[i]; let near = false; for (let j = 0; j < pts.length && !near; j++) { const b = pts[j]; if (Math.abs(a[2] - b[2]) <= 150) continue; if (Math.abs(a[0] - b[0]) > 100 || Math.abs(a[1] - b[1]) > 100) continue; if (Math.hypot(a[0] - b[0], a[1] - b[1]) <= 100) near = true; } if (near) hit++; }
+  return pts.length ? 100 * hit / pts.length : 0;
 }
 function chaikin(pts, iter) { let p = pts; for (let k = 0; k < iter; k++) { const q = [p[0]]; for (let i = 0; i < p.length - 1; i++) { const a = p[i], b = p[i + 1]; q.push([0.75 * a[0] + 0.25 * b[0], 0.75 * a[1] + 0.25 * b[1]], [0.25 * a[0] + 0.75 * b[0], 0.25 * a[1] + 0.75 * b[1]]); } q.push(p[p.length - 1]); p = q; } return p; }
 function offsetLinje(xy, d) { const out = []; for (let i = 0; i < xy.length; i++) { const a = xy[Math.max(0, i - 1)], b = xy[Math.min(xy.length - 1, i + 1)]; const dx = b[0] - a[0], dy = b[1] - a[1]; const L = Math.hypot(dx, dy) || 1; out.push([xy[i][0] - dy / L * d, xy[i][1] + dx / L * d]); } return out; }
@@ -880,54 +967,95 @@ function retningGrader(a, b) { return (Math.atan2(b[0] - a[0], b[1] - a[1]) * 18
 function vinkelDiff(a, b) { return Math.abs(((a - b + 540) % 360) - 180); }
 
 function planleggDag(dag, o, graf, tidligere, cfg, steder, startPt, sluttPt, vind, middel) {
-  const art = o.arter[dag - 1] || 'blandet'; const b = cfg.form[o.form];
+  const art = o.arter[dag - 1] || 'blandet'; const b = cfg.form[o.form]; const R = cfg.rute;
   const startN = naermesteNode(graf, startPt); const sluttN = sluttPt ? naermesteNode(graf, sluttPt) : startN;
   const base = o.sloyfe ? steder.find(s => s.roller.includes('base')) : null; const baseN = base ? naermesteNode(graf, base) : -1;
   if (startN < 0) return { dag, art, feil: 'Fant ingen gåbar celle nær startpunktet.' };
-  const maal = velgMaal(graf, art, dag, tidligere, cfg);
-  const fixed = baseN >= 0 ? [startN, baseN, sluttN] : [startN, sluttN];
-  const pts = [...new Set([...fixed, ...maal.map(m => m.ix)])]; const D = new Map(); for (const p of pts) D.set(p, dijkstra(graf, p));
-  const lunsj = baseN >= 0 ? cfg.rute.lunsj_min * 60 : 0; const pf = 1 + cfg.gange.pause_min_per_time / 60;
+  const felter = finnFelter(graf, art, dag, tidligere, cfg).sort((x, y) => y.middel - x.middel);
+  const N = graf.nodes.length; const mult = new Float32Array(N).fill(1);
+  const lunsj = baseN >= 0 ? R.lunsj_min * 60 : 0; const pf = 1 + cfg.gange.pause_min_per_time / 60;
   const budsjett = { m: b.maks_km * 1000, up: b.maks_hoydemeter, t: o.timer * 3600 - lunsj };
-  const kost = tr => { let m = 0, up = 0, t = 0; for (let i = 0; i < tr.length - 1; i++) { const d = D.get(tr[i]); m += d.m[tr[i + 1]]; up += d.up[tr[i + 1]]; t += d.t[tr[i + 1]]; } return { m, up, t: t * pf }; };
-  let tour = fixed.slice(); if (!isFinite(kost(tour).t)) return { dag, art, feil: 'Start, slutt eller bua kan ikke nås til fots innenfor jaktfeltet.' };
-  const verdiAv = ix => (maal.find(m => m.ix === ix) || { verdi: 0 }).verdi;
-  const rest = new Set(maal.map(m => m.ix).filter(ix => !fixed.includes(ix)));
-  for (;;) {
-    let best = null; const kNaa = kost(tour).t;
-    for (const mx of rest) for (let pos = 1; pos < tour.length; pos++) {
-      const tr = tour.slice(0, pos).concat([mx], tour.slice(pos)); const c = kost(tr);
-      if (!isFinite(c.t) || c.m > budsjett.m || c.up > budsjett.up || c.t > budsjett.t) continue;
-      const ratio = verdiAv(mx) / Math.max(c.t - kNaa, 60); if (!best || ratio > best.ratio) best = { ratio, tr, mx };
+  const path = [startN]; const tot = { m: 0, up: 0, t: 0 }; const brukt = new Set(); const partier = []; const etapper = []; const logg = [];
+  const leggTil = (seg, kost, type) => {
+    for (const ix of seg.slice(1)) path.push(ix); tot.m += kost.m; tot.up += kost.up; tot.t += kost.t; etapper.push({ type, m: kost.m, fra: seg[0], til: seg[seg.length - 1] });
+    for (const ix of seg) { for (const m of nodesWithin(graf, ix, R.samme_dag_ytre_radius_m)) if (mult[m] < R.samme_dag_straff_ytre) mult[m] = R.samme_dag_straff_ytre; for (const m of nodesWithin(graf, ix, R.samme_dag_radius_m)) mult[m] = R.samme_dag_straff; }
+  };
+  const medKorridor = (mu, seg) => { const m2 = Float32Array.from(mu); for (const ix of seg) { for (const m of nodesWithin(graf, ix, R.samme_dag_ytre_radius_m)) if (m2[m] < R.samme_dag_straff_ytre) m2[m] = R.samme_dag_straff_ytre; for (const m of nodesWithin(graf, ix, R.samme_dag_radius_m)) m2[m] = R.samme_dag_straff; } return m2; };
+  const legg = (fra, til, felt, muBase) => {
+    // sweeps inside a field are straight lines when the ground allows; otherwise, and for transport, Dijkstra with the day's penalties
+    if (felt) { const r = rettLinje(graf, fra, til); if (r) return { seg: r.seg, kost: { m: r.kost.m, up: r.kost.up, t: r.kost.t * pf }, ok: true }; }
+    let mu = muBase || mult; if (felt) { mu = Float32Array.from(mu); for (const ix of felt.cells) mu[ix] = 1; }
+    const D = dijkstra(graf, fra, mu); return { seg: stiTil(D, til), kost: { m: D.m[til], up: D.up[til], t: D.tr[til] * pf }, ok: isFinite(D.t[til]) };
+  };
+  const reserve = (fra, til, mu) => { if (fra === til) return 0; const D = dijkstra(graf, fra, mu || mult); return isFinite(D.t[til]) ? D.tr[til] * pf * (R.reserve_faktor || 1.15) : Infinity; };
+  const naa = () => path[path.length - 1];
+  // one phase: visit fields with sweeps until the time budget (minus the reserve to reach `slutt`) is used
+  const avvist = new Set();  // field entry options (field, line, side) that did not fit; a field is dropped when all four are rejected
+  const fase = (slutt, tidBudsjett) => {
+    for (;;) {
+      const cur = naa(); const Dcur = dijkstra(graf, cur, mult); let best = null;
+      felter.forEach((f, fi) => {
+        if (brukt.has(f)) return; if (!f.lines) f.lines = sveipLinjer(graf, f, R.sveip_avstand_m); if (!f.lines.length) { brukt.add(f); return; }
+        const L = f.lines;
+        for (const [li, side] of [[0, 'lo'], [0, 'hi'], [L.length - 1, 'lo'], [L.length - 1, 'hi']]) {
+          if (avvist.has(`${fi}|${li}|${side}`)) continue; const ix = L[li][side]; if (!isFinite(Dcur.t[ix])) continue;
+          const util = f.middel - R.transport_straff_per_km * Dcur.m[ix] / 1000; if (!best || util > best.util) best = { f, fi, li, side, ix, util };
+        }
+      });
+      if (!best) { logg.push(`fase mot ${slutt === baseN ? 'bua' : 'slutt'}: ingen flere felt`); return; }
+      avvist.add(`${best.fi}|${best.li}|${best.side}`);
+      const leg = legg(cur, best.ix); if (!leg.ok) { logg.push(`felt ${Math.round(best.f.middel)}/${best.f.size}: ikke nåbart`); continue; }
+      const res0 = reserve(best.ix, slutt);
+      if (tot.t + leg.kost.t + res0 > tidBudsjett || tot.m + leg.kost.m > budsjett.m || tot.up + leg.kost.up > budsjett.up) { logg.push(`felt ${Math.round(best.f.middel)}/${best.f.size} ${(leg.kost.m / 1000).toFixed(1)} km unna: transport ${(leg.kost.t / 3600).toFixed(1)} t + reserve ${(res0 / 3600).toFixed(1)} t sprenger budsjettet (brukt ${(tot.t / 3600).toFixed(1)} av ${(tidBudsjett / 3600).toFixed(1)} t, ${(tot.m / 1000).toFixed(1)} km, ${Math.round(tot.up)} hm)`); continue; }
+      // sweep lines that already lie inside today's corridor are dropped; does at least the first remaining sweep fit?
+      const L = best.f.lines.filter(l => mult[l.lo] < R.samme_dag_straff && mult[l.hi] < R.samme_dag_straff); if (!L.length) { logg.push(`felt ${Math.round(best.f.middel)}/${best.f.size}: alle drag ligger i dagens korridor`); continue; }
+      const order = best.li === 0 ? L : L.slice().reverse();
+      const muEtter = medKorridor(mult, leg.seg);  // penalties as they will be after walking there
+      const prove = legg(best.ix, order[0][best.side === 'lo' ? 'hi' : 'lo'], best.f, muEtter);
+      if (!prove.ok || tot.t + leg.kost.t + prove.kost.t + reserve(prove.seg[prove.seg.length - 1], slutt, medKorridor(muEtter, prove.seg)) > tidBudsjett) { logg.push(`felt ${Math.round(best.f.middel)}/${best.f.size}: første drag får ikke plass`); continue; }
+      leggTil(leg.seg, leg.kost, 'transport'); brukt.add(best.f);
+      let side = best.side, cur2 = best.ix, sweeps = 0;
+      for (let k = 0; k < order.length; k++) {
+        const Lk = order[k]; const fra = k === 0 ? cur2 : Lk[side]; const til = Lk[side === 'lo' ? 'hi' : 'lo']; const segs = [];
+        if (k > 0 && (mult[Lk.lo] >= R.samme_dag_straff || mult[Lk.hi] >= R.samme_dag_straff)) continue;
+        if (k > 0) { const c = legg(cur2, fra, best.f); if (!c.ok) break; segs.push(c); }
+        const s = legg(segs.length ? fra : cur2, til, best.f); if (!s.ok) break; segs.push(s);
+        const addT = segs.reduce((a, x) => a + x.kost.t, 0), addM = segs.reduce((a, x) => a + x.kost.m, 0), addU = segs.reduce((a, x) => a + x.kost.up, 0);
+        if (tot.t + addT + reserve(til, slutt) > tidBudsjett || tot.m + addM > budsjett.m || tot.up + addU > budsjett.up) break;
+        segs.forEach((x, i) => leggTil(x.seg, x.kost, i < segs.length - 1 ? 'kobling' : 'drag')); cur2 = til; side = side === 'lo' ? 'hi' : 'lo'; sweeps++;
+      }
+      partier.push({ felt: best.f, drag: sweeps, inn: best.ix, forLunsj: slutt === baseN });
+      if (!sweeps) return;
     }
-    if (!best) break; tour = best.tr; rest.delete(best.mx);
-  }
-  let improved = true;
-  while (improved) { improved = false; for (let i = 1; i < tour.length - 2; i++) for (let j = i + 1; j < tour.length - 1; j++) { const seg = tour.slice(i, j + 1); if (seg.some(x => fixed.includes(x))) continue; const tr = tour.slice(0, i).concat(seg.reverse(), tour.slice(j + 1)); if (kost(tr).t < kost(tour).t - 1) { tour = tr; improved = true; } } }
-  const bygg = tr => { const np = []; for (let i = 0; i < tr.length - 1; i++) { const seg = stiTil(D.get(tr[i]), tr[i + 1]); np.push(...(i ? seg.slice(1) : seg)); } return np; };
-  const partier = tr => tr.filter(ix => !fixed.includes(ix));
-  const inngang = (np, tr) => { const mål = partier(tr); if (!mål.length) return null; const topp = mål.reduce((a, c) => verdiAv(c) > verdiAv(a) ? c : a); const at = np.indexOf(topp); if (at < 2) return null; return { topp, heading: retningGrader([graf.nodes[np[Math.max(0, at - 4)]].x, graf.nodes[np[Math.max(0, at - 4)]].y], [graf.nodes[topp].x, graf.nodes[topp].y]) }; };
-  let np = bygg(tour); let inn = inngang(np, tour); let retning = 'Ingen vindretning i varselet, ruten går som planlagt.';
-  if (vind && inn) {
-    let diff = vinkelDiff(inn.heading, vind.fra);
-    if (diff > 90 && startN === sluttN) { const tr2 = [tour[0]].concat(tour.slice(1, -1).reverse(), [tour[tour.length - 1]]); const np2 = bygg(tr2); const inn2 = inngang(np2, tr2); if (inn2 && vinkelDiff(inn2.heading, vind.fra) < diff) { tour = tr2; np = np2; inn = inn2; diff = vinkelDiff(inn2.heading, vind.fra); } }
-    const nr = partier(tour).indexOf(inn.topp) + 1;
-    retning = diff <= 60 ? `Mot vinden inn i parti ${nr}, vind fra ${kompass(vind.fra)} ${fmt.int(vind.ms)} m/s om morgenen.` : diff <= 120 ? `Sidevind inn i parti ${nr}, vind fra ${kompass(vind.fra)} ${fmt.int(vind.ms)} m/s. Gå gjerne et lite stykke lenger ${kompass(vind.fra)} før dere svinger inn.` : `Vinden fra ${kompass(vind.fra)} kommer bakfra inn i parti ${nr}. Med valgt start og slutt finnes ingen bedre retning; vurder å bytte start og slutt.`;
-  }
-  const r = cfg.rotasjon.radius_m, sveipR = cfg.rute.korridorbredde_m / 2 + 10; const besokt = {}, naer = {}, sveip = new Set();
-  for (const ix of np) { for (const m of nodesWithin(graf, ix, r)) besokt[graf.nodes[m].k] = true; for (const m of nodesWithin(graf, ix, 300)) naer[graf.nodes[m].k] = true; for (const m of nodesWithin(graf, ix, sveipR)) sveip.add(m); }
-  const k = kost(tour); const andel = { skog: 0, apent: 0, myr: 0, annet: 0 }; const stokk = {}; for (const a of ARTER) stokk[a] = 0;
-  const S = cfg.stokk;
+  };
+  if (baseN >= 0) {
+    fase(baseN, budsjett.t * (R.morgen_andel || 0.55));
+    const l = legg(naa(), baseN); if (!l.ok) return { dag, art, feil: 'Bua kan ikke nås til fots innenfor jaktfeltet.' }; leggTil(l.seg, l.kost, 'transport'); tot.t += lunsj;
+    fase(sluttN, budsjett.t + lunsj);
+  } else fase(sluttN, budsjett.t);
+  const ret = legg(naa(), sluttN); if (!ret.ok) return { dag, art, feil: 'Sluttpunktet kan ikke nås til fots innenfor jaktfeltet.' }; leggTil(ret.seg, ret.kost, 'transport');
+  if (!partier.length) return { dag, art, feil: `Ingen felt med score over ${R.min_score_maal} som får plass i budsjettet fra ${startPt.navn || 'startpunktet'}.` };
+  const np = path;
+  // wind: heading of the first sweep against the morning wind
+  let retning = 'Ingen vindretning i varselet.';
+  const forsteDrag = etapper.find(e => e.type === 'drag');
+  if (vind && forsteDrag) { const a = graf.nodes[forsteDrag.fra], bb = graf.nodes[forsteDrag.til]; const diff = vinkelDiff(retningGrader([a.x, a.y], [bb.x, bb.y]), vind.fra); retning = `${diff <= 60 ? 'Første drag går mot vinden' : diff <= 120 ? 'Første drag går i sidevind' : 'Første drag går med vinden i ryggen'}, vind fra ${kompass(vind.fra)} ${fmt.int(vind.ms)} m/s om morgenen. Snu dragretningen i feltet om det passer bedre.`; }
+  const rr = cfg.rotasjon.radius_m, sveipR = R.korridorbredde_m / 2 + 10; const besokt = {}, naer = {}, sveip = new Set();
+  for (const ix of np) { for (const m of nodesWithin(graf, ix, rr)) besokt[graf.nodes[m].k] = true; for (const m of nodesWithin(graf, ix, 300)) naer[graf.nodes[m].k] = true; for (const m of nodesWithin(graf, ix, sveipR)) sveip.add(m); }
+  const andel = { skog: 0, apent: 0, myr: 0, annet: 0 }; const stokk = {}; for (const a of ARTER) stokk[a] = 0; const S = cfg.stokk;
   for (const m of sveip) { const n = graf.nodes[m]; andel[n.at === 30 ? 'skog' : n.at === 50 ? 'apent' : n.at === 60 ? 'myr' : 'annet']++; for (const a of ARTER) { const s = n.p[scoreKey(a)]; if (s != null && middel[a] > 0) stokk[a] += S.tetthet_fugl_per_km2 * (s / middel[a]) * 0.0025 * S.oppdagelsesandel_uten_hund; } }
   const nSv = sveip.size || 1; for (const key in andel) andel[key] /= nSv;
-  const path = np.map(ix => [graf.nodes[ix].lon, graf.nodes[ix].lat, Math.round(graf.nodes[ix].h)]);
+  let mOver60 = 0, mDrag = 0; for (let i = 1; i < np.length; i++) { const a = graf.nodes[np[i - 1]], c = graf.nodes[np[i]]; const L = Math.hypot(a.x - c.x, a.y - c.y); if (scoreAv(c, art) >= 60) mOver60 += L; }
+  for (const e of etapper) if (e.type === 'drag') mDrag += e.m;
+  const pathLL = np.map(ix => [graf.nodes[ix].lon, graf.nodes[ix].lat, Math.round(graf.nodes[ix].h)]);
   const xy = chaikin(np.map(ix => [graf.nodes[ix].x, graf.nodes[ix].y]), 2); const half = cfg.jegere.avstand_m / 2;
   const spor = [offsetLinje(xy, half).map(p => toLL(p[0], p[1])), offsetLinje(xy, -half).map(p => toLL(p[0], p[1]))];
   const glatt = xy.map(p => toLL(p[0], p[1]));
-  const maalListe = partier(tour).map((ix, i) => ({ nr: i + 1, lon: graf.nodes[ix].lon, lat: graf.nodes[ix].lat, h: Math.round(graf.nodes[ix].h), verdi: Math.round(verdiAv(ix)), topp: Math.round((maal.find(m => m.ix === ix) || {}).topp || 0), fraBase: baseN >= 0 ? { m: D.get(baseN).m[ix], t: D.get(baseN).t[ix] * pf } : null, lunsjFor: baseN >= 0 && tour.indexOf(ix) < tour.indexOf(baseN) }));
-  return { dag, art, tour, path, glatt, spor, maal: maalListe, besokt, naer, retning, vind, base: baseN >= 0 ? { navn: base.navn, lon: graf.nodes[baseN].lon, lat: graf.nodes[baseN].lat } : null,
+  const Dbase = baseN >= 0 ? dijkstra(graf, baseN) : null;
+  const maalListe = partier.map((p, i) => ({ nr: i + 1, lon: graf.nodes[p.inn].lon, lat: graf.nodes[p.inn].lat, h: Math.round(graf.nodes[p.inn].h), verdi: Math.round(p.felt.middel), ha: Math.round(p.felt.size * 0.25), drag: p.drag, fraBase: Dbase ? { m: Dbase.m[p.inn], t: Dbase.tr[p.inn] * pf } : null, lunsjFor: p.forLunsj }));
+  return { dag, art, path: pathLL, glatt, spor, maal: maalListe, besokt, naer, retning, vind, logg, base: baseN >= 0 ? { navn: base.navn, lon: graf.nodes[baseN].lon, lat: graf.nodes[baseN].lat } : null,
            start: { lon: graf.nodes[startN].lon, lat: graf.nodes[startN].lat, navn: startPt.navn }, slutt: { lon: graf.nodes[sluttN].lon, lat: graf.nodes[sluttN].lat },
-           stats: { m: k.m, up: k.up, t: k.t + lunsj, lunsj, andel, stokk, sveipCeller: sveip.size, budsjett, antallMaal: maalListe.length, kandidater: maal.length } };
+           stats: { m: tot.m, up: tot.up, t: tot.t, lunsj, andel, stokk, sveipCeller: sveip.size, budsjett, antallMaal: partier.length, kandidater: felter.length, overlapp: overlappProsent(graf, np), andelOver60: tot.m ? mOver60 / tot.m : 0, andelDrag: tot.m ? mDrag / tot.m : 0 } };
 }
 
 function beregnMiddel() { for (const a of ARTER) { let s = 0, n = 0; for (const node of GRAF.nodes) { const v = node.p[scoreKey(a)]; if (v != null && v >= 0) { s += v; n++; } } RUTE.middel[a] = n ? s / n : 0; } }
@@ -959,7 +1087,7 @@ function oppdaterRuteLag(animer) {
   const besokt = []; if (state.grid) { const keys = new Map(); for (let d = 1; d < state.dag; d++) { const x = RUTE.dager[d]; if (x && x.besokt) for (const k of Object.keys(x.besokt)) keys.set(+k, state.dag - d); } if (keys.size) for (const f of state.grid.features) { const k = f.properties.i * 100000 + f.properties.j; if (keys.has(k)) besokt.push({ type: 'Feature', properties: { alder: keys.get(k) }, geometry: f.geometry }); } }
   map.getSource('besokt').setData({ type: 'FeatureCollection', features: besokt });
   for (const m of maalMarkers) m.remove(); maalMarkers = [];
-  if (r && !r.feil) for (const mål of r.maal) { const e = el('div', { class: 'maalmark', title: `Parti ${mål.nr}, verdi ${mål.verdi}` }, String(mål.nr)); maalMarkers.push(new maplibregl.Marker({ element: e, anchor: 'center' }).setLngLat([mål.lon, mål.lat]).addTo(map)); }
+  if (r && !r.feil) for (const mål of r.maal) { const e = el('div', { class: 'maalmark', title: `Parti ${mål.nr}, middelscore ${mål.verdi}, ${mål.ha} ha, ${mål.drag} drag` }, String(mål.nr)); e.addEventListener('click', ev => ev.stopPropagation()); maalMarkers.push(new maplibregl.Marker({ element: e, anchor: 'center' }).setLngLat([mål.lon, mål.lat]).addTo(map)); }
   const F = lesFarger();
   cancelAnimationFrame(ruteAnim);
   if (linje && animer && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -982,11 +1110,15 @@ function tegnRute() {
   const st = r.stats;
   const tall = el('div'); tall.append(el('span', { class: 'num' }, fmt.dec(st.m / 1000), el('small', {}, 'km')), el('span', { class: 'num', style: 'margin-left: var(--s-4)' }, fmt.int(st.up), el('small', {}, 'hm')));
   frag.append(tall);
+  const overlappOk = st.overlapp <= CFG.route.rute.overlapp_maal_pst;
   const rows = [
     ['Estimert tid', `${tidTekst(st.t)}${st.lunsj ? `, inkl. ${st.lunsj / 60} min lunsj i ${r.base.navn}` : ''}`],
     ['Budsjett', `${b.maks_km} km, ${b.maks_hoydemeter} hm, ${fmt.dec(o.timer)} t`],
-    ['Partier', `${st.antallMaal} av ${st.kandidater} kandidater`],
-    ['Gangretning', r.retning],
+    ['Andel av ruten i celler over 60', `${fmt.int(st.andelOver60 * 100)} %`],
+    ['Andel drag gjennom felt', `${fmt.int(st.andelDrag * 100)} %`],
+    ['Overlapp med seg selv', `${fmt.dec(st.overlapp)} %${overlappOk ? '' : `, mål under ${CFG.route.rute.overlapp_maal_pst} %`}`],
+    ['Felt', `${st.antallMaal} av ${st.kandidater} kandidater`],
+    ['Vind', r.retning],
   ];
   frag.append(...rows.map(([k, v]) => el('div', { class: 'row' }, el('span', { class: 'k' }, k), el('span', { class: 'v' }, v))));
   const a = st.andel; const bar = el('div', { class: 'andel' }); for (const [key, col] of [['skog', '--storfugl'], ['apent', '--ink-3'], ['myr', '--mire'], ['annet', '--line']]) { const i = el('i'); i.style.width = `${a[key] * 100}%`; i.style.background = cssVar(col); bar.append(i); }
@@ -994,11 +1126,10 @@ function tegnRute() {
   const sk = el('div', { class: 'stokk' }); const arterVis = r.art === 'blandet' ? ARTER : [r.art, ...ARTER.filter(x => x !== r.art)];
   for (const art of arterVis) { const d = el('div'); d.append(el('span', { class: art === r.art || r.art === 'blandet' ? 'num-l' : 'muted' }, fmt.dec(st.stokk[art])), el('span', { class: 'small' }, ART_NAVN[art].toLowerCase())); sk.append(d); }
   frag.append(el('div', { class: 'small', style: 'margin-top: var(--s-3)' }, `Forventet støkk, kalibrert mot ${CFG.route.stokk.tetthet_fugl_per_km2} fugl/km² og ${fmt.int(CFG.route.stokk.oppdagelsesandel_uten_hund * 100)} % oppdagelse uten hund`), sk);
-  if (r.base) {
-    frag.append(el('div', { class: 'small', style: 'margin-top: var(--s-3)' }, `Fra ${r.base.navn} til dagens partier`));
-    for (const m of r.maal) if (m.fraBase && isFinite(m.fraBase.t)) frag.append(el('div', { class: 'row' }, el('span', { class: 'k' }, `Parti ${m.nr}, ${m.h} moh, verdi ${m.verdi}${m.lunsjFor ? ', før lunsj' : ', etter lunsj'}`), el('span', { class: 'v' }, `${fmt.dec(m.fraBase.m / 1000)} km, ${tidTekst(m.fraBase.t)}`)));
-  } else {
-    for (const m of r.maal) frag.append(el('div', { class: 'row' }, el('span', { class: 'k' }, `Parti ${m.nr}, ${m.h} moh`), el('span', { class: 'v' }, `verdi ${m.verdi}`)));
+  frag.append(el('div', { class: 'small', style: 'margin-top: var(--s-3)' }, r.base ? `Dagens felt, med avstand og gangtid fra ${r.base.navn}` : 'Dagens felt'));
+  for (const m of r.maal) {
+    const k = `Felt ${m.nr}, ${m.h} moh, ${m.ha} ha, middelscore ${m.verdi}, ${m.drag} drag${r.base ? (m.lunsjFor ? ', før lunsj' : ', etter lunsj') : ''}`;
+    frag.append(el('div', { class: 'row' }, el('span', { class: 'k' }, k), el('span', { class: 'v' }, m.fraBase && isFinite(m.fraBase.t) ? `${fmt.dec(m.fraBase.m / 1000)} km, ${tidTekst(m.fraBase.t)}` : '')));
   }
   frag.append(el('div', { class: 'actions-row' },
     el('button', { class: 'btn btn-primary', onclick: () => lastNedGpx(state.dag) }, `GPX dag ${state.dag}`),
@@ -1019,7 +1150,7 @@ function gpxForDager(dager) {
     const r = RUTE.dager[d]; if (!r || r.feil) continue;
     s += `<wpt lat="${r.start.lat.toFixed(6)}" lon="${r.start.lon.toFixed(6)}"><name>${xmlEsc(`Dag ${d} start, ${r.start.navn || ''}`)}</name></wpt>`;
     if (r.base) s += `<wpt lat="${r.base.lat.toFixed(6)}" lon="${r.base.lon.toFixed(6)}"><name>${xmlEsc(`${r.base.navn}, lunsj`)}</name></wpt>`;
-    for (const m of r.maal) s += `<wpt lat="${m.lat.toFixed(6)}" lon="${m.lon.toFixed(6)}"><ele>${m.h}</ele><name>${xmlEsc(`Dag ${d} parti ${m.nr}`)}</name><desc>${xmlEsc(`Verdi ${m.verdi}, ${ART_NAVN[r.art]}`)}</desc></wpt>`;
+    for (const m of r.maal) s += `<wpt lat="${m.lat.toFixed(6)}" lon="${m.lon.toFixed(6)}"><ele>${m.h}</ele><name>${xmlEsc(`Dag ${d} felt ${m.nr}`)}</name><desc>${xmlEsc(`Middelscore ${m.verdi}, ${m.ha} ha, ${ART_NAVN[r.art]}`)}</desc></wpt>`;
     s += gpxTrk(`Dag ${d} rute, ${ART_NAVN[r.art]}, ${r.dato}`, r.path, true);
     s += gpxTrk(`Dag ${d} spor jeger 1`, r.spor[0], false); s += gpxTrk(`Dag ${d} spor jeger 2`, r.spor[1], false);
   }
@@ -1031,7 +1162,7 @@ function lastNedPng() { try { map.once('idle', () => lastNed(`jakt-bygland-${sta
 // ============================================================ boot
 async function boot() {
   const [habitat, route, start, steder, kjerner] = await Promise.all(['config/habitat.json', 'config/route.json', 'config/start.json', 'config/steder.json', 'config/kjerner.geojson'].map(u => fetch(u).then(r => r.json())));
-  Object.assign(CFG, { habitat, route, start, steder, kjerner });
+  Object.assign(CFG, { habitat, route, start, steder, kjerner }); HABITAT = habitat;
   state.tema = store.get(LS.tema, 'auto'); Object.assign(state.lag, store.get(LS.lag, {}));
   brukTema();
   const fraHash = oppsettFraHash();

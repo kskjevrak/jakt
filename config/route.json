@@ -41,14 +41,26 @@
   "rute": {
     "cellestorrelse_m": 50,
     "min_score_maal": 55,
-    "maks_antall_maal": 8,
     "korridorbredde_m": 80,
     "straff_utenfor_jaktfelt": "forbudt",
     "straff_vann": "forbudt",
     "straff_helning_over_grader": 35,
     "vind_inn_i_beste_parti": true,
     "lunsj_min": 30,
-    "_doc": "Målceller velges blant celler med score over min_score_maal (etter rotasjonsstraff), samles i partier og settes inn i ruten så lenge km, høydemeter og timer holder. lunsj_min trekkes fra tidsbudsjettet når ruten legges som sløyfe om bua."
+    "_doc": "Felt = sammenhengende celler med score over terskelen for dagens art, der terskelen er den høyeste av min_score_maal og felt_kvantil-persentilen av dagens score i jaktfeltet (etter rotasjonsstraff), slik at feltene følger de røde kjernene. Felt over felt_maks_celler deles i biter. Ruten går gjennom feltene i parallelle drag på tvers av lengderetningen med sveip_avstand_m mellom dragene. Celler ruten har passert samme dag får kostnadsfaktor samme_dag_straff innen samme_dag_radius_m og samme_dag_straff_ytre innen samme_dag_ytre_radius_m, slik at retur og transport legges en annen vei. Neste felt velges etter middelscore minus transport_straff_per_km per km transport. Start, slutt og steder er aldri mål. krev_hoydesone krever at målceller ligger innenfor artens høydesone i habitat.json. overlapp_maal_pst er målet for andel av ruten innenfor 100 m av seg selv. lunsj_min trekkes fra tiden når sløyfe om bua er valgt. reserve_faktor er sikkerhetsmargin på gangtiden hjem før et nytt drag legges til. morgen_andel er andelen av tiden som brukes før lunsj i bua.",
+    "sveip_avstand_m": 200,
+    "felt_min_celler": 12,
+    "felt_maks_celler": 400,
+    "samme_dag_straff": 3.0,
+    "samme_dag_straff_ytre": 1.4,
+    "transport_straff_per_km": 3,
+    "overlapp_maal_pst": 10,
+    "krev_hoydesone": true,
+    "samme_dag_radius_m": 150,
+    "samme_dag_ytre_radius_m": 300,
+    "felt_kvantil": 0.75,
+    "reserve_faktor": 1.15,
+    "morgen_andel": 0.55
   },
   "rotasjon": {
     "_doc": "Besøkte celler straffes: faktor = 1 - styrke * 0.5^(dager_siden / halveringstid_dager). Straffen gjelder innenfor radius_m fra sporet.",
