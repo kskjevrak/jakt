@@ -12,11 +12,16 @@
       "navn": "Hukebu",
       "type": "bu",
       "lat": 58.7923505,
-      "lon": 7.6900220,
+      "lon": 7.690022,
       "hoyde_moh": 589,
       "hoyde_kilde": "Kartverket høyde-API (DTM 1 m) 588,8 m og egen DTM 10 m 588,7 m; oppgitt ca 585",
-      "popup": "Hukebu. Bua ved Hukebuvatnet, ca 585 moh. Ly, lunsj og base for dagene på platået.",
-      "roller": ["start", "slutt", "via", "base"],
+      "popup": "Hukebu. Bua ved Hukebuvatnet, 589 moh. Ly, lunsj og base for dagene på platået.",
+      "roller": [
+        "start",
+        "slutt",
+        "via",
+        "base"
+      ],
       "lagt_inn": "2026-10-20"
     }
   ]

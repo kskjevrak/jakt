@@ -41,17 +41,17 @@
   }
  },
  "storfugl": {
-  "middel_jaktfelt": 31.834856033325195,
-  "median_jaktfelt": 15.557146072387695,
-  "andel_over_60_pst": 24.508310119837724,
-  "ha_over_60": 524.37,
-  "andel_over_75_pst": 9.40894389500645,
+  "middel_jaktfelt": 33.731590270996094,
+  "median_jaktfelt": 16.18421173095703,
+  "andel_over_60_pst": 27.751032922656993,
+  "ha_over_60": 593.75,
+  "andel_over_75_pst": 14.08841070126568,
   "maks": 100.0,
   "middel_faktorer_jaktfelt": {
    "hoydesone": 0.20930826663970947,
    "furudominert": 0.45828235149383545,
    "barskog_ar5": 0.45508283376693726,
-   "trehoyde": 0.1592351347208023,
+   "trehoyde": 0.30991509556770325,
    "bonitet": 0.6180009245872498,
    "blabaermark_proxy": 0.7048794627189636,
    "myr_naerhet": 0.7199116349220276,
@@ -66,16 +66,16 @@
  },
  "_dominerende": {
   "ha_per_art_jaktfelt": {
-   "lirype": 807.93,
-   "orrfugl": 312.78,
-   "storfugl": 482.17
+   "lirype": 782.93,
+   "orrfugl": 286.41,
+   "storfugl": 551.98
   },
-  "ha_ingen": 536.68,
+  "ha_ingen": 518.24,
   "terskel": 50
  },
  "_grid": {
   "celler": 14816,
   "mb": 7.4
  },
- "_bygget": "2026-10-20T13:30:59Z"
+ "_bygget": "2026-10-20T13:51:31Z"
 }

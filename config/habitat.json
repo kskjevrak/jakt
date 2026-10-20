@@ -340,12 +340,12 @@
           "vekt": 1.0
         },
         "trehoyde": {
-          "_doc": "middelhøyde over 17 m (SR16, meter), null under 12 m",
+          "_doc": "middelhøyde over 13 m (SR16, meter), null under 8 m",
           "type": "trapes",
           "kilde": "sr16_hoyde_m",
           "punkter": [
-            12,
-            17,
+            8,
+            13,
             28,
             40
           ],

@@ -122,6 +122,18 @@ h2.sec { font: var(--t-body); font-weight: 700; margin: var(--s-5) 0 var(--s-1);
 .actions-row { display: flex; gap: var(--s-2); flex-wrap: wrap; margin-top: var(--s-4); }
 .status { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: var(--r-pill); font: var(--t-small); background: var(--accent-soft); color: var(--ink); }
 .status.off { background: transparent; border: 1px solid var(--line); color: var(--ink-2); }
+.status.warn { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); font-weight: 700; padding: 6px 12px; }
+.vind { display: inline-flex; align-items: center; gap: var(--s-2); }
+.vind svg { width: 24px; height: 24px; color: var(--ink); flex: none; }
+.vind .unit { display: block; margin: 0; }
+.timer { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; padding: var(--s-1) 0 var(--s-2); }
+.timer::-webkit-scrollbar { display: none; }
+.timer div { flex: none; width: 42px; text-align: center; font: var(--t-small); color: var(--ink-2); border-radius: 6px; padding: 4px 0; }
+.timer div b { display: block; font-weight: 700; color: var(--ink); font-size: 15px; }
+.timer div svg { width: 14px; height: 14px; display: block; margin: 2px auto; color: var(--ink-2); }
+.timer div.flag { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+.timer div.flag b, .timer div.flag svg { color: var(--warn); }
+.under { font: var(--t-small); color: var(--ink-2); margin: -4px 0 var(--s-2); }
 
 @media (min-width: 900px) {
   .panel { top: calc(64px + env(safe-area-inset-top)); left: var(--s-4); bottom: var(--s-4); width: min(var(--panel-w), 33vw); }
@@ -213,6 +225,8 @@ dialog[open] { animation: dlg var(--d-panel) var(--ease-out); }
       <div><span class="num" id="tall-ha">–<small>ha</small></span></div>
       <div class="legend" id="legend"></div>
       <div class="legend-labels" id="legend-labels"></div>
+      <h2 class="sec">Vær <span class="small" id="vaer-kilde"></span></h2>
+      <div id="vaer" class="swap"><div class="empty">Henter varsel fra MET.</div></div>
       <h2 class="sec">Dagens oppsett</h2>
       <div id="oppsett-liste"></div>
       <div class="actions-row">
@@ -431,6 +445,7 @@ function tegnPanel() {
     $('#steder-liste').replaceChildren(...CFG.steder.steder.map(s => el('div', { class: 'row' }, el('span', { class: 'k' }, `${s.navn}, ${s.hoyde_moh} moh`), el('button', { class: 'btn btn-small', onclick: () => map.flyTo({ center: [s.lon, s.lat], zoom: 14.5 }) }, 'Vis'))));
     tegnLegend();
     inn.classList.remove('out');
+    tegnVaer();
   }, matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 120);
 }
 function tegnLegend() {
@@ -675,6 +690,101 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if
   head.addEventListener('click', () => { if (mobil() && !moved && cur === 'peek') setState('half'); });
 })();
 
+// ============================================================ vær (MET)
+const VAER = { punkter: {}, sol: {} };
+const OSLO = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Oslo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hour12: false });
+function lokal(tIso) { const parts = OSLO.formatToParts(new Date(tIso)); const g = t => parts.find(p => p.type === t).value; return { dato: `${g('year')}-${g('month')}-${g('day')}`, time: (+g('hour')) % 24 }; }
+function isoDate(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function klokke(iso) { if (!iso) return '–'; return new Intl.DateTimeFormat('nb-NO', { timeZone: 'Europe/Oslo', hour: '2-digit', minute: '2-digit' }).format(new Date(iso)); }
+function osloOffset(dato) { const parts = new Intl.DateTimeFormat('en', { timeZone: 'Europe/Oslo', timeZoneName: 'longOffset' }).formatToParts(new Date(dato + 'T12:00:00Z')); const tz = (parts.find(p => p.type === 'timeZoneName') || {}).value || 'GMT+01:00'; const off = tz.replace('GMT', ''); return off || '+00:00'; }
+function kompass(g) { return ['N', 'NØ', 'Ø', 'SØ', 'S', 'SV', 'V', 'NV'][Math.round(((g % 360) + 360) % 360 / 45) % 8]; }
+function pil(fra) { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(${(fra + 180) % 360}deg)" aria-label="vind fra ${kompass(fra)}"><path d="M12 20V4"/><path d="m6 10 6-6 6 6"/></svg>`; }
+function timeSpenn(timer) { if (!timer.length) return ''; const grupper = []; let s = timer[0], e = timer[0]; for (const t of timer.slice(1)) { if (t === e + 1) e = t; else { grupper.push([s, e]); s = e = t; } } grupper.push([s, e]); return grupper.map(([a, b]) => a === b ? `${String(a).padStart(2, '0')}` : `${String(a).padStart(2, '0')}–${String(b + 1).padStart(2, '0')}`).join(', '); }
+
+async function hentVaer() {
+  const pts = CFG.route.vaer.punkter;
+  for (const p of pts) {
+    const key = `jakt.vaer.${p.id}`; const cached = store.get(key, null);
+    if (cached && new Date(cached.expires) > new Date()) { VAER.punkter[p.id] = cached; continue; }
+    try {
+      const r = await fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${p.lat.toFixed(4)}&lon=${p.lon.toFixed(4)}&altitude=${p.hoyde_moh}`);
+      if (!r.ok) throw new Error(String(r.status));
+      const data = await r.json(); const exp = r.headers.get('Expires');
+      const rec = { data, expires: new Date(exp ? Date.parse(exp) : Date.now() + CFG.route.vaer.cache_minutter_fallback * 60000).toISOString(), hentet: new Date().toISOString(), kilde: 'live' };
+      store.set(key, rec); VAER.punkter[p.id] = rec;
+    } catch (e) {
+      if (cached) VAER.punkter[p.id] = { ...cached, kilde: 'cache' };
+    }
+  }
+  if (pts.some(p => !VAER.punkter[p.id])) {
+    try { const fb = await (await fetch('data/forecast.json')).json(); for (const p of pts) { const f = fb.punkter && fb.punkter[p.id]; if (!VAER.punkter[p.id] && f) VAER.punkter[p.id] = { data: f.data, expires: f.expires, hentet: fb.hentet, kilde: 'fallback' }; } } catch (e) { /* ingen fallback */ }
+  }
+}
+async function hentSol(dato) {
+  if (VAER.sol[dato]) return VAER.sol[dato];
+  const key = `jakt.sol.${dato}`; const c = store.get(key, null); if (c) { VAER.sol[dato] = c; return c; }
+  const p = CFG.route.vaer.punkter.find(x => x.id === 'litjonni') || CFG.route.vaer.punkter[0];
+  try {
+    const r = await fetch(`https://api.met.no/weatherapi/sunrise/3.0/sun?lat=${p.lat.toFixed(4)}&lon=${p.lon.toFixed(4)}&date=${dato}&offset=${encodeURIComponent(osloOffset(dato))}`);
+    if (!r.ok) throw new Error(String(r.status));
+    const j = await r.json(); const rec = { opp: j.properties.sunrise && j.properties.sunrise.time, ned: j.properties.sunset && j.properties.sunset.time, kilde: 'live' };
+    store.set(key, rec); VAER.sol[dato] = rec; return rec;
+  } catch (e) {
+    try { const fb = await (await fetch('data/sun.json')).json(); const d = fb.dager && fb.dager[dato]; if (d) { const rec = { opp: d.soloppgang, ned: d.solnedgang, kilde: 'fallback' }; VAER.sol[dato] = rec; return rec; } } catch (e2) { /* ingen */ }
+    return null;
+  }
+}
+function timerForDag(pid, dato, h0, h1) {
+  const rec = VAER.punkter[pid]; if (!rec) return [];
+  const alle = rec.data.properties.timeseries.map(ts => ({ ...lokal(ts.time), tid: ts.time, d: ts.data.instant.details, n1: ts.data.next_1_hours, n6: ts.data.next_6_hours })).filter(x => x.dato === dato);
+  const rows = alle.filter(x => x.time >= h0 && x.time <= h1);
+  // beyond ~2 days MET gives 6-hourly steps; widen the window so a day still gets a reading
+  return rows.some(x => x.n1) ? rows : alle.filter(x => x.time >= h0 - 3 && x.time <= h1 + 3);
+}
+function vaerStat(rows) {
+  if (!rows.length) return null;
+  const ws = rows.map(r => r.d.wind_speed);
+  let u = 0, v = 0; for (const r of rows) { const a = r.d.wind_from_direction * Math.PI / 180; u += Math.sin(a) * r.d.wind_speed; v += Math.cos(a) * r.d.wind_speed; }
+  const fra = (Math.atan2(u, v) * 180 / Math.PI + 360) % 360;
+  const temps = rows.map(r => r.d.air_temperature);
+  const nedbor = rows.reduce((s, r) => s + (r.n1 ? r.n1.details.precipitation_amount : r.n6 ? r.n6.details.precipitation_amount : 0), 0);
+  const sky = rows.reduce((s, r) => s + (r.d.cloud_area_fraction || 0), 0) / rows.length;
+  return { maks: Math.max(...ws), typisk: ws.slice().sort((a, b) => a - b)[Math.floor(ws.length / 2)], fra, tmin: Math.min(...temps), tmaks: Math.max(...temps), nedbor, sky, grov: rows.every(r => !r.n1) };
+}
+function vindMorgen(dato, h0) {
+  const p = CFG.route.vaer.punkter.find(x => x.id === 'litjonni') || CFG.route.vaer.punkter[0];
+  const st = vaerStat(timerForDag(p.id, dato, h0, h0 + 3)); return st ? { fra: st.fra, ms: st.typisk } : null;
+}
+async function tegnVaer() {
+  const box = $('#vaer'); if (!box || !state.oppsett) return;
+  const o = state.oppsett; const dato = isoDate(addDays(o.dato, state.dag - 1));
+  const h0 = +o.start_tid.slice(0, 2), h1 = Math.min(23, Math.ceil(h0 + o.timer));
+  const sol = await hentSol(dato);
+  const pts = [...CFG.route.vaer.punkter].sort((a, b) => b.hoyde_moh - a.hoyde_moh);
+  if (!pts.some(p => VAER.punkter[p.id])) { box.replaceChildren(el('div', { class: 'empty' }, 'Fikk ikke vær fra MET, og ingen lagret kopi finnes. Varselet kommer når du er på nett igjen.')); return; }
+  const terskel = CFG.route.vaer.vind_unngaa_snaufjell_ms; const top = pts[0];
+  const topRows = timerForDag(top.id, dato, h0, h1); const flagged = topRows.filter(r => r.d.wind_speed >= terskel).map(r => r.time);
+  const frag = document.createDocumentFragment();
+  frag.append(el('div', { class: 'row' }, el('span', { class: 'k' }, 'Sol'), el('span', { class: 'v' }, sol ? `opp ${klokke(sol.opp)}, ned ${klokke(sol.ned)}` : 'ikke tilgjengelig')));
+  if (flagged.length) { const w = el('div', { class: 'status warn' }, `Unngå snaufjell kl. ${timeSpenn(flagged)}: vind over ${terskel} m/s på ${top.navn}`); w.style.margin = 'var(--s-2) 0'; frag.append(w); }
+  for (const p of pts) {
+    const st = vaerStat(timerForDag(p.id, dato, h0, h1));
+    const r = el('div', { class: 'row' }, el('span', { class: 'k' }, `${p.navn}, ${p.hoyde_moh} moh`));
+    if (!st) { r.append(el('span', { class: 'v muted' }, 'ingen varsel for dagen')); frag.append(r); continue; }
+    const v = el('span', { class: 'v vind' }); const a = el('span'); a.innerHTML = pil(st.fra); v.append(a);
+    const t = el('span'); t.append(el('span', { class: 'num-l' }, fmt.int(st.maks)), el('span', { class: 'unit' }, `m/s maks, ${fmt.int(st.typisk)} typisk, fra ${kompass(st.fra)}`)); v.append(t); r.append(v); frag.append(r);
+    frag.append(el('div', { class: 'under' }, `${fmt.int(st.tmin)} til ${fmt.int(st.tmaks)} °C, nedbør ${fmt.dec(st.nedbor)} mm, skydekke ${fmt.int(st.sky)} %${st.grov ? ', 6-timers oppløsning' : ''}`));
+  }
+  if (topRows.length) {
+    frag.append(el('div', { class: 'small' }, `Time for time på ${top.navn}, m/s. Felt kl. ${String(h0).padStart(2, '0')}–${String(h1).padStart(2, '0')}.`));
+    const strip = el('div', { class: 'timer' });
+    for (const r of topRows) { const c = el('div', { class: r.d.wind_speed >= terskel ? 'flag' : '' }); c.append(el('span', {}, String(r.time).padStart(2, '0'))); const s = el('span'); s.innerHTML = pil(r.d.wind_from_direction); c.append(s, el('b', {}, fmt.int(r.d.wind_speed))); strip.append(c); }
+    frag.append(strip);
+  }
+  const rec = VAER.punkter[top.id]; $('#vaer-kilde').textContent = rec ? (rec.kilde === 'live' ? `MET, hentet ${klokke(rec.hentet)}` : `lagret kopi fra ${klokke(rec.hentet)}`) : '';
+  box.classList.add('out'); setTimeout(() => { box.replaceChildren(frag); box.classList.remove('out'); }, 60);
+}
+
 // ============================================================ boot
 async function boot() {
   const [habitat, route, start, steder, kjerner] = await Promise.all(['config/habitat.json', 'config/route.json', 'config/start.json', 'config/steder.json', 'config/kjerner.geojson'].map(u => fetch(u).then(r => r.json())));
@@ -688,6 +798,7 @@ async function boot() {
   tegnSlicer(); tegnPanel(); tegnLagvelger();
   await initKart();
   brukTema();
+  hentVaer().then(() => tegnVaer());
   if (!fraHash && !store.get(LS.oppsett, null)) apneOppsett(true);
   else skrivHash();
 }

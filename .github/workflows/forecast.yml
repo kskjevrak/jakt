@@ -1,0 +1,36 @@
+name: Værfallback fra MET
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"   # hver 6. time
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: forecast
+  cancel-in-progress: false
+
+jobs:
+  forecast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet requests==2.32.5
+      - name: Hent varsel og soltider
+        run: python scripts/fetch_forecast.py
+      - name: Commit hvis endret
+        run: |
+          git config user.name "jakt-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/forecast.json data/sun.json
+          if git diff --cached --quiet; then
+            echo "Ingen endring"
+          else
+            git commit -m "Oppdater værfallback fra MET ($(date -u +%Y-%m-%dT%H:%MZ))"
+            git push
+          fi
