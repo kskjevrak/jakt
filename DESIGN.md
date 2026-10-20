@@ -59,8 +59,9 @@ Kontrast: `--ink` på `--panel-solid` er 14:1 i lys og 15:1 i mørk modus. `--ac
 `--accent` er 4,6:1 i lys (hvit på oransje) og 9:1 i mørk. Store tall settes alltid i `--ink`, aldri
 i aksentfarge, slik at de leses i sol.
 
-Mørk modus bytter også bakgrunnskartet til Kartverkets gråtonetopo (`topograatone`) dempet med
-`raster-brightness-max: 0.62`, slik at panelene og rutelinjen bærer fargen om kvelden.
+Bakgrunnskartet er Kartverkets topo i vanlige farger i begge moduser. Mørk modus gjelder bare paneler,
+tekst og våre egne linjer, slik at terrenget leses likt dag og kveld. Scorelaget ligger på 0,55 dekkevne
+så terrenget synes gjennom.
 
 ## Typografi
 
@@ -155,9 +156,10 @@ Regler fra designskillen som gjelder her:
 
 ## Kartet
 
-- Bakgrunn: Kartverket `topo` (lys) / `topograatone` (mørk), WMTS webmercator.
+- Bakgrunn: Kartverket `topo`, WMTS webmercator, i begge moduser.
 - Jaktfelt: linje 2,5 px `--ink`, ingen fyll. Naboteiger: skravur 45° i `--nabo`, 1 px linje.
-- Score: PNG-overlegg med `raster-opacity 0.85`, kan dempes med glidebryter i lagvelgeren.
+- Score: 50 m-celler og PNG-overlegg med dekkevne 0,55, justerbart med glidebryter i lagvelgeren.
+- Popup: én om gangen, maks 280 px bred, følger panelets modus, ord i stedet for koder, celle-id i grått nederst.
 - Rute: 4 px `--accent`, hvit kant 1 px for lesbarhet på topo. To jegerspor: 1,5 px `--ink`, stiplet.
   Gangretning: pilsymbol langs linjen hver 400 m. Korridor (polygonkjeden): `--accent-soft`.
 - Startpunkt: ring 10 px med 2 px kant. Artskart-funn: punkt 6 px i artsfarge. Egne loggpunkter:
