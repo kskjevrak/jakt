@@ -243,9 +243,10 @@ def build_n50(g: Grid) -> dict[str, np.ndarray]:
     g.save("mask_myr_n50", out["mask_myr_n50"].astype(np.uint8))
     out["mask_vann"] = g.rasterize(list(vann.geometry))
     out["mask_bekk"] = g.rasterize(list(bekk.geometry)) | g.rasterize(list(vann[vann["n50type"] == "Elv"].geometry) if len(vann) else [])
-    sti_mask = g.rasterize(list(veg[veg["typeveg"].str.contains("sti|traktor", case=False, regex=True)].geometry)) if len(veg) else np.zeros((g.height, g.width), np.uint8)
+    # every road, tractor road and path counts as a transport line for the walking model (roads are the fastest)
+    sti_mask = g.rasterize(list(veg.geometry)) if len(veg) else np.zeros((g.height, g.width), np.uint8)
     out["mask_sti"] = sti_mask
-    out["mask_veg"] = g.rasterize(list(veg.geometry)) if len(veg) else sti_mask
+    out["mask_veg"] = sti_mask
     out["dist_bekk_m"] = g.distance(out["mask_bekk"])
     out["dist_vann_m"] = g.distance(out["mask_vann"])
     for k in ("mask_vann", "mask_bekk", "mask_sti", "mask_veg"):

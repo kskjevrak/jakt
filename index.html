@@ -179,9 +179,12 @@ dialog[open] { animation: dlg var(--d-panel) var(--ease-out); }
 .dlg-body { padding: var(--s-5); display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--s-4); }
 .dlg-body .wide { grid-column: 1 / -1; }
 .dlg-foot { display: flex; gap: var(--s-2); justify-content: flex-end; padding: 0 var(--s-5) var(--s-5); flex-wrap: wrap; }
-.dagrad { display: grid; grid-template-columns: auto 1fr; gap: var(--s-2) var(--s-3); align-items: center; margin-bottom: var(--s-2); }
-.dagrad .seg { width: 100%; }
-.dagrad .seg button { flex: 1; padding: 0 var(--s-2); }
+.dagblokk { border-top: 1px solid var(--line); padding: var(--s-3) 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2) var(--s-3); align-items: end; }
+.dagblokk .dagnavn { grid-column: 1 / -1; font-weight: 700; }
+.dagblokk .seg { grid-column: 1 / -1; width: 100%; }
+.dagblokk .seg button { flex: 1; padding: 0 var(--s-2); }
+.dagblokk label.field { margin: 0; }
+.dagblokk .switch { grid-column: 1 / -1; border: 0; min-height: 36px; }
 @media (max-width: 560px) { .dlg-body { grid-template-columns: 1fr; } }
 
 /* ---------- markers ---------- */
@@ -279,13 +282,10 @@ dialog[open] { animation: dlg var(--d-panel) var(--ease-out); }
         <div class="seg" id="f-form" data-name="form"></div><span class="small" id="form-hint"></span></div>
       <label class="field"><span>Starttid</span><input type="time" name="start_tid" step="900"></label>
       <label class="field"><span>Timer i felt</span><input type="number" name="timer" min="2" max="12" step="0.5"></label>
-      <label class="field"><span>Startpunkt</span><select name="start" id="f-start"></select></label>
-      <label class="field"><span>Sluttpunkt</span><select name="slutt" id="f-slutt"></select></label>
       <div class="field wide">
-        <span class="field-title">Prioritert art per dag</span>
-        <div id="f-arter"></div>
+        <span class="field-title">Per dag: art, start, slutt og sløyfe om bua. «Standard for arten» følger config/route.json, for storfugl gjennomgang Mele til Troddebakken, snudd ved sørlig morgenvind ved fjorden.</span>
+        <div id="f-dagliste"></div>
       </div>
-      <label class="field wide switch" style="border:0"><span>Sløyfe om bua: ut om morgenen, lunsj i Hukebu, nytt område om ettermiddagen</span><input type="checkbox" name="sloyfe" id="f-sloyfe"></label>
     </div>
     <div class="dlg-foot">
       <button type="button" class="btn btn-quiet" id="btn-avbryt">Avbryt</button>
@@ -305,6 +305,7 @@ const ART_NAVN = { lirype: 'Rype', orrfugl: 'Orrfugl', storfugl: 'Storfugl', bla
 const SONER = [['alle', 'Alle høyder', null], ['lav', 'Under 500', [0, 500]], ['midt', '500–700', [500, 700]], ['hoy', 'Over 700', [700, 9999]]];
 const LS = { oppsett: 'jakt.oppsett', lag: 'jakt.lag', tema: 'jakt.tema', visning: 'jakt.visning' };
 const CFG = {};
+window.__jakt = { klar: false, ruterKlare: false };  // read by scripts/screenshot.py
 const state = {
   oppsett: null, dag: 1, art: 'lirype', sone: 'alle', tema: 'auto',
   lag: { score: true, score10: false, dominant: false, ruter: true, besokt: true, kjerner: true, artskart: true, jaktfelt: true, nabo: true, vann: true, stier: true, myr: false, punkter: false, wmsAr5: false, wmsTreslag: false, wmsBonitet: false, wmsMatrikkel: false },
@@ -324,9 +325,8 @@ const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(
 
 // ============================================================ oppsett
 function defaultOppsett() {
-  const base = (CFG.steder.steder.find(s => s.roller.includes('base')) || {}).id || null;
   return { dato: today(), dager: 2, jegere: CFG.route.jegere.standard_antall, form: 'normal', start_tid: '08:00', timer: 7,
-           start: 'hukebu', slutt: 'samme', sloyfe: !!base, arter: ['lirype', 'blandet'], egen: null };
+           arter: ['lirype', 'blandet'], dagoppsett: [{ start: 'auto', slutt: 'auto', sloyfe: null }, { start: 'auto', slutt: 'auto', sloyfe: null }], egen: null };
 }
 function oppsettFraHash() {
   if (!location.hash.includes('=')) return null;
@@ -334,26 +334,52 @@ function oppsettFraHash() {
   if (!p.get('dato')) return null;
   const o = defaultOppsett();
   o.dato = p.get('dato'); o.dager = +p.get('dager') || o.dager; o.jegere = +p.get('jegere') || o.jegere; o.form = p.get('form') || o.form;
-  o.start_tid = p.get('tid') || o.start_tid; o.timer = +p.get('timer') || o.timer; o.start = p.get('start') || o.start; o.slutt = p.get('slutt') || o.slutt;
-  o.sloyfe = p.get('sloyfe') === '1'; o.arter = (p.get('arter') || '').split(',').filter(Boolean);
+  o.start_tid = p.get('tid') || o.start_tid; o.timer = +p.get('timer') || o.timer; o.arter = (p.get('arter') || '').split(',').filter(Boolean);
+  o.dagoppsett = [];
+  for (let d = 1; d <= 5; d++) { const v = p.get('d' + d); if (!v) break; const [start, slutt, sl] = v.split(':'); o.dagoppsett.push({ start: start || 'auto', slutt: slutt || 'auto', sloyfe: sl === '1' ? true : sl === '0' ? false : null }); }
+  if (!o.dagoppsett.length && p.get('start')) o.dagoppsett = [{ start: p.get('start'), slutt: p.get('slutt') || 'samme', sloyfe: p.get('sloyfe') === '1' }];  // old links
   if (p.get('egen')) { const [lat, lon] = p.get('egen').split(',').map(Number); if (isFinite(lat) && isFinite(lon)) o.egen = { lat, lon }; }
   if (p.get('dag')) state.dag = +p.get('dag') || 1;
+  if (p.get('auto') === '1') state.autoRuter = true;
   return normaliser(o);
 }
 function normaliser(o) {
   o.dager = Math.min(5, Math.max(1, o.dager | 0));
   while (o.arter.length < o.dager) o.arter.push(o.arter[o.arter.length - 1] || 'blandet');
   o.arter = o.arter.slice(0, o.dager).map(a => (a in ART_NAVN ? a : 'blandet'));
+  if (!Array.isArray(o.dagoppsett)) o.dagoppsett = o.start ? [{ start: o.start, slutt: o.slutt || 'samme', sloyfe: !!o.sloyfe }] : [];  // stored before per-day setup existed
+  while (o.dagoppsett.length < o.dager) o.dagoppsett.push({ start: 'auto', slutt: 'auto', sloyfe: null });
+  o.dagoppsett = o.dagoppsett.slice(0, o.dager).map(x => ({ start: x.start || 'auto', slutt: x.slutt || 'auto', sloyfe: x.sloyfe == null ? null : !!x.sloyfe }));
+  delete o.start; delete o.slutt; delete o.sloyfe;
   if (!(o.form in CFG.route.form)) o.form = 'normal';
   return o;
 }
 function skrivHash() {
   const o = state.oppsett; const p = new URLSearchParams();
   p.set('dato', o.dato); p.set('dager', o.dager); p.set('jegere', o.jegere); p.set('form', o.form); p.set('tid', o.start_tid); p.set('timer', o.timer);
-  p.set('start', o.start); p.set('slutt', o.slutt); p.set('sloyfe', o.sloyfe ? '1' : '0'); p.set('arter', o.arter.join(',')); p.set('dag', state.dag);
+  p.set('arter', o.arter.join(',')); p.set('dag', state.dag);
+  o.dagoppsett.forEach((x, i) => p.set('d' + (i + 1), `${x.start}:${x.slutt}:${x.sloyfe == null ? '' : x.sloyfe ? '1' : '0'}`));
   if (o.egen) p.set('egen', `${o.egen.lat.toFixed(5)},${o.egen.lon.toFixed(5)}`);
   history.replaceState(null, '', '#' + p.toString());
 }
+// resolve the day's start, end and loop from the per-day setup, the species default and the morning wind
+function planFor(d, o) {
+  o = o || state.oppsett; const art = o.arter[d - 1] || 'blandet'; const dc = o.dagoppsett[d - 1] || {};
+  const std = CFG.route.standard_per_art[art] || CFG.route.standard_per_art.blandet;
+  const dato = isoDate(addDays(o.dato, d - 1)); const h0 = +o.start_tid.slice(0, 2);
+  let start = dc.start && dc.start !== 'auto' ? dc.start : std.start, slutt = dc.slutt && dc.slutt !== 'auto' ? dc.slutt : std.slutt;
+  const sloyfe = dc.sloyfe != null ? dc.sloyfe : !!std.sloyfe; let begrunnelse = '';
+  if ((!dc.start || dc.start === 'auto') && (!dc.slutt || dc.slutt === 'auto') && std.snu_ved_vind_fra) {
+    const v = vindVed(std.vindpunkt || 'fjord', dato, h0); const [a, b] = std.snu_ved_vind_fra;
+    if (v && v.fra >= a && v.fra <= b) { [start, slutt] = [std.slutt, std.start]; begrunnelse = `Morgenvind fra ${kompass(v.fra)} ${fmt.int(v.ms)} m/s ved fjorden, derfor snudd retning.`; }
+    else begrunnelse = v ? `Morgenvind fra ${kompass(v.fra)} ved fjorden, standard retning.` : 'Standard retning for arten; vind ukjent.';
+  }
+  if (slutt === 'samme') slutt = start;
+  const gjennomgang = slutt !== start;
+  return { art, start, slutt, sloyfe: sloyfe && !gjennomgang, gjennomgang, begrunnelse, auto: (!dc.start || dc.start === 'auto') && (!dc.slutt || dc.slutt === 'auto') };
+}
+function navnPaa(id) { const p = punkt(id); return p ? p.navn.replace(/ \(\d+ moh\)$/, '') : id; }
+function opplegTekst(plan) { return plan.gjennomgang ? `Gjennomgang fra ${navnPaa(plan.start)} til ${navnPaa(plan.slutt)}. Bilen må stå ved ${navnPaa(plan.slutt)}.` : `${navnPaa(plan.start)} som start og slutt${plan.sloyfe ? ', sløyfe om bua med lunsj' : ''}.`; }
 function lagreOppsett(o) { state.oppsett = normaliser(o); store.set(LS.oppsett, state.oppsett); state.dag = Math.min(state.dag, state.oppsett.dager); skrivHash(); tegnSlicer(); tegnPanel(); oppdaterStartMarkorer(); }
 
 function punktListe() {
@@ -363,6 +389,7 @@ function punktListe() {
   return liste;
 }
 function punkt(id) { if (id === 'egen' && state.oppsett?.egen) return { id: 'egen', navn: 'Eget punkt i kartet', ...state.oppsett.egen }; return punktListe().find(p => p.id === id) || null; }
+function vindVed(pid, dato, h0) { const st = vaerStat(timerForDag(pid, dato, h0, h0 + 3)); return st ? { fra: st.fra, ms: st.typisk } : null; }
 
 function byggSeg(container, valg, verdi, onChange, name) {
   container.replaceChildren();
@@ -379,47 +406,56 @@ function segVerdi(container) { return container.querySelector('[aria-pressed="tr
 function apneOppsett(forste) {
   const dlg = $('#oppsett'); const f = $('#oppsett-form'); const o = state.oppsett || defaultOppsett();
   f.dato.value = o.dato; f.start_tid.value = o.start_tid; f.timer.value = o.timer;
-  byggSeg($('#f-dager'), [1, 2, 3, 4, 5].map(n => [String(n), String(n)]), String(o.dager), v => tegnArterRad(+v, o));
+  byggSeg($('#f-dager'), [1, 2, 3, 4, 5].map(n => [String(n), String(n)]), String(o.dager), v => tegnDagRader(+v, o));
   byggSeg($('#f-jegere'), [1, 2, 3].map(n => [String(n), String(n)]), String(o.jegere), () => {});
   const formValg = Object.entries(CFG.route.form).map(([k]) => [k, { lett: 'Lett', normal: 'Normal', hard: 'Hard' }[k] || k]);
   const hint = v => { const b = CFG.route.form[v]; $('#form-hint').textContent = `Inntil ${b.maks_km} km og ${b.maks_hoydemeter} høydemeter per dag`; };
   byggSeg($('#f-form'), formValg, o.form, hint); hint(o.form);
-  const fyll = (sel, verdi, medSamme) => {
-    sel.replaceChildren();
-    if (medSamme) sel.append(el('option', { value: 'samme' }, 'Samme som start'));
-    for (const p of punktListe()) sel.append(el('option', { value: p.id }, p.navn));
-    sel.append(el('option', { value: 'egen' }, o.egen ? `Eget punkt (${o.egen.lat.toFixed(4)}, ${o.egen.lon.toFixed(4)})` : 'Klikk i kartet etter lagring'));
-    sel.value = verdi; if (!sel.value) sel.value = sel.options[0].value;
-  };
-  fyll($('#f-start'), o.start, false); fyll($('#f-slutt'), o.slutt, true);
-  $('#f-sloyfe').checked = o.sloyfe;
-  tegnArterRad(o.dager, o);
+  tegnDagRader(o.dager, o);
   $('#btn-avbryt').hidden = !!forste && !state.oppsett;
   dlg.showModal();
 }
-function tegnArterRad(dager, o) {
-  const box = $('#f-arter'); box.replaceChildren();
+function punktValg(sel, verdi, medSamme, o) {
+  sel.replaceChildren();
+  sel.append(el('option', { value: 'auto' }, 'Standard for arten'));
+  if (medSamme) sel.append(el('option', { value: 'samme' }, 'Samme som start'));
+  for (const p of punktListe()) sel.append(el('option', { value: p.id }, p.navn));
+  sel.append(el('option', { value: 'egen' }, o.egen ? `Eget punkt (${o.egen.lat.toFixed(4)}, ${o.egen.lon.toFixed(4)})` : 'Klikk i kartet etter lagring'));
+  sel.value = verdi; if (!sel.value) sel.value = 'auto';
+}
+function tegnDagRader(dager, o) {
+  const box = $('#f-dagliste'); const gamle = lesDagRader(); box.replaceChildren();
   const d0 = $('#oppsett-form').dato.value || o.dato;
   for (let i = 0; i < dager; i++) {
-    const dato = addDays(d0, i);
-    const lbl = el('span', { class: 'small' }, `Dag ${i + 1}, ${new Intl.DateTimeFormat('nb-NO', { weekday: 'short', day: 'numeric', month: 'short' }).format(dato)}`);
-    const seg = el('div', { class: 'seg art', 'data-dag': i });
-    byggSeg(seg, ['lirype', 'orrfugl', 'storfugl', 'blandet'].map(a => [a, ART_NAVN[a], a === 'blandet' ? cssVar('--ink-2') : cssVar('--' + a)]), o.arter[i] || o.arter[o.arter.length - 1] || 'blandet', () => {});
-    box.append(el('div', { class: 'dagrad' }, lbl, seg));
+    const dato = addDays(d0, i); const dc = gamle[i] || o.dagoppsett[i] || { start: 'auto', slutt: 'auto', sloyfe: null };
+    const art = gamle[i] ? gamle[i].art : (o.arter[i] || o.arter[o.arter.length - 1] || 'blandet');
+    const blokk = el('div', { class: 'dagblokk', 'data-dag': i });
+    blokk.append(el('div', { class: 'dagnavn' }, `Dag ${i + 1}, ${new Intl.DateTimeFormat('nb-NO', { weekday: 'short', day: 'numeric', month: 'short' }).format(dato)}`));
+    const seg = el('div', { class: 'seg art' }); byggSeg(seg, ['lirype', 'orrfugl', 'storfugl', 'blandet'].map(a => [a, ART_NAVN[a], a === 'blandet' ? cssVar('--ink-2') : cssVar('--' + a)]), art, () => {}); blokk.append(seg);
+    const s1 = el('select', { class: 'start' }), s2 = el('select', { class: 'slutt' }); punktValg(s1, dc.start, false, o); punktValg(s2, dc.slutt, true, o);
+    blokk.append(el('label', { class: 'field' }, el('span', {}, 'Start'), s1), el('label', { class: 'field' }, el('span', {}, 'Slutt'), s2));
+    const sw = el('input', { type: 'checkbox', class: 'sloyfe' }); sw.indeterminate = dc.sloyfe == null; sw.checked = dc.sloyfe === true;
+    sw.addEventListener('change', () => { sw.indeterminate = false; });
+    blokk.append(el('label', { class: 'switch' }, el('span', { class: 'small' }, 'Sløyfe om bua: ut om morgenen, lunsj i Hukebu, nytt område om ettermiddagen (uavgjort = standard for arten)'), sw));
+    box.append(blokk);
   }
 }
+function lesDagRader() {
+  return [...$('#f-dagliste').querySelectorAll('.dagblokk')].map(b => ({ art: segVerdi(b.querySelector('.seg')), start: b.querySelector('.start').value, slutt: b.querySelector('.slutt').value,
+    sloyfe: b.querySelector('.sloyfe').indeterminate ? null : b.querySelector('.sloyfe').checked }));
+}
 $('#oppsett-form').addEventListener('submit', e => {
-  const f = e.target;
+  const f = e.target; const rader = lesDagRader();
   const o = normaliser({
     dato: f.dato.value || today(), dager: +segVerdi($('#f-dager')), jegere: +segVerdi($('#f-jegere')), form: segVerdi($('#f-form')),
-    start_tid: f.start_tid.value || '08:00', timer: +f.timer.value || 7, start: f.start.value, slutt: f.slutt.value, sloyfe: $('#f-sloyfe').checked,
-    arter: [...$('#f-arter').querySelectorAll('.seg')].map(s => segVerdi(s)), egen: state.oppsett?.egen || null,
+    start_tid: f.start_tid.value || '08:00', timer: +f.timer.value || 7,
+    arter: rader.map(r => r.art), dagoppsett: rader.map(r => ({ start: r.start, slutt: r.slutt, sloyfe: r.sloyfe })), egen: state.oppsett?.egen || null,
   });
   lagreOppsett(o);
-  if ((o.start === 'egen' || o.slutt === 'egen') && !o.egen) { state.velgIKart = o.start === 'egen' ? 'start' : 'slutt'; toast('Klikk i kartet der dere starter'); }
-  else toast('Oppsett lagret');
+  const trengerEgen = o.dagoppsett.some(x => x.start === 'egen' || x.slutt === 'egen') && !o.egen;
+  if (trengerEgen) { state.velgIKart = 'start'; toast('Klikk i kartet der dere starter'); } else toast('Oppsett lagret');
 });
-$('#oppsett-form').dato.addEventListener('change', () => tegnArterRad(+segVerdi($('#f-dager')), state.oppsett || defaultOppsett()));
+$('#oppsett-form').dato.addEventListener('change', () => tegnDagRader(+segVerdi($('#f-dager')), state.oppsett || defaultOppsett()));
 $('#btn-avbryt').addEventListener('click', () => $('#oppsett').close());
 $('#btn-nytt').addEventListener('click', () => apneOppsett(false));
 
@@ -443,14 +479,11 @@ function tegnPanel() {
     $('#tall-ha').innerHTML = st ? `${fmt.int(st.ha60)}<small>ha over 60, middel ${fmt.int(st.middel)}</small>` : (gridLoaded ? '0<small>ha</small>' : '–<small>laster celler</small>');
     $('#peek-tall').innerHTML = st ? `${fmt.int(st.ha60)}<span class="unit">ha</span>` : '';
     const b = CFG.route.form[o.form];
-    const start = punkt(o.start), slutt = o.slutt === 'samme' ? start : punkt(o.slutt);
-    const base = CFG.steder.steder.find(s => s.roller.includes('base'));
+    const plan = planFor(state.dag);
     const rader = [
       ['Art i kartet', state.art === 'blandet' ? 'Dominerende art per celle' : ART_NAVN[state.art]],
       ['Høydesone', SONER.find(s => s[0] === state.sone)[1]],
-      ['Start', start ? start.navn : 'Ikke valgt'],
-      ['Slutt', slutt ? slutt.navn : 'Ikke valgt'],
-      ['Sløyfe om bua', o.sloyfe && base ? `Ja, lunsj i ${base.navn}` : 'Nei'],
+      [plan.gjennomgang ? 'Gjennomgang' : 'Start og slutt', opplegTekst(plan) + (plan.begrunnelse ? ` ${plan.begrunnelse}` : '')],
       ['Form', `${{ lett: 'Lett', normal: 'Normal', hard: 'Hard' }[o.form]}, inntil ${b.maks_km} km og ${b.maks_hoydemeter} hm`],
     ];
     $('#oppsett-liste').replaceChildren(...rader.map(([k, v]) => el('div', { class: 'row' }, el('span', { class: 'k' }, k), el('span', { class: 'v' }, v))));
@@ -530,6 +563,7 @@ async function lastGrid() {
     map.getSource('grid').setData(g);
     GRAF = byggGraf(g, CFG.route); beregnMiddel(); gjenopprettRuter();
     oppdaterScoreLag(); oppdaterRuteLag(); tegnPanel();
+    if (state.autoRuter && !Object.keys(RUTE.dager).length) { state.autoRuter = false; hentVaer().then(() => { lagRuter(1); window.__jakt.ruterKlare = true; }); } else window.__jakt.ruterKlare = true;
   } catch (e) {
     gridLoaded = true; $('#tall-ha').innerHTML = '–<small>fikk ikke lastet cellene. Prøv å laste siden på nytt.</small>';
   }
@@ -658,7 +692,7 @@ function tegnStedMarkorer() {
   for (const s of CFG.steder.steder) {
     const e = el('button', { class: 'sted', 'aria-label': s.navn, title: s.navn }); e.innerHTML = hytteSvg();
     const pop = new maplibregl.Popup({ offset: 26, className: 'pop', maxWidth: '280px' }).setHTML(`<div class="pop"><h3>${s.navn}</h3><p>${s.popup}</p><div class="actions">${s.roller.includes('start') ? '<button class="btn btn-small" data-r="start">Bruk som start</button>' : ''}${s.roller.includes('slutt') ? '<button class="btn btn-small" data-r="slutt">Bruk som slutt</button>' : ''}${s.roller.includes('base') ? '<button class="btn btn-small" data-r="base">Sløyfe om bua</button>' : ''}</div></div>`);
-    pop.on('open', () => { pop.getElement().querySelectorAll('[data-r]').forEach(b => b.addEventListener('click', () => { const o = { ...state.oppsett }; if (b.dataset.r === 'start') o.start = s.id; if (b.dataset.r === 'slutt') o.slutt = s.id; if (b.dataset.r === 'base') o.sloyfe = true; lagreOppsett(o); pop.remove(); toast(b.dataset.r === 'base' ? `Ruten legges som sløyfe om ${s.navn}` : `${s.navn} er ${b.dataset.r}`); })); });
+    pop.on('open', () => { pop.getElement().querySelectorAll('[data-r]').forEach(b => b.addEventListener('click', () => { const o = { ...state.oppsett, dagoppsett: state.oppsett.dagoppsett.map(x => ({ ...x })) }; const dc = o.dagoppsett[state.dag - 1]; if (b.dataset.r === 'start') dc.start = s.id; if (b.dataset.r === 'slutt') dc.slutt = s.id; if (b.dataset.r === 'base') { dc.sloyfe = true; dc.start = s.id; dc.slutt = 'samme'; } lagreOppsett(o); pop.remove(); toast(b.dataset.r === 'base' ? `Dag ${state.dag} legges som sløyfe om ${s.navn}` : `${s.navn} er ${b.dataset.r} for dag ${state.dag}`); })); });
     // the marker handles its own click; the map must not also open a cell popup underneath
     e.addEventListener('click', ev => { ev.stopPropagation(); if (pop.isOpen()) { pop.remove(); } else { visPopup(pop.setLngLat([s.lon, s.lat])); } });
     stedMarkers.push(new maplibregl.Marker({ element: e, anchor: 'center' }).setLngLat([s.lon, s.lat]).addTo(map));
@@ -667,14 +701,14 @@ function tegnStedMarkorer() {
 function oppdaterStartMarkorer() {
   // only the day's chosen start and end are shown; the other start points appear when the layer "Alle startpunkter" is on
   for (const m of startMarkers) m.remove(); startMarkers = [];
-  const o = state.oppsett; if (!o) return;
+  const o = state.oppsett; if (!o) return; const plan = planFor(state.dag);
   const pts = [...CFG.start.startpunkter.filter(s => s.lat != null)];
   if (o.egen) pts.push({ id: 'egen', navn: 'Eget punkt', lat: o.egen.lat, lon: o.egen.lon });
   for (const s of pts) {
-    const erStart = o.start === s.id, erSlutt = o.slutt === 'samme' ? erStart : o.slutt === s.id;
+    const erStart = plan.start === s.id, erSlutt = plan.slutt === s.id;
     if (!state.lag.punkter && !erStart && !erSlutt) continue;
-    const e = el('div', { class: 'startpkt' + (erStart || erSlutt ? ' valgt' : ''), title: s.navn }); e.append(el('i'), el('span', {}, erStart && erSlutt ? `${s.navn}, start og slutt` : erStart ? `${s.navn}, start` : erSlutt ? `${s.navn}, slutt` : s.navn));
-    e.addEventListener('click', ev => { ev.stopPropagation(); lukkPopup(); const op = { ...state.oppsett, start: s.id }; lagreOppsett(op); toast(`${s.navn} er startpunkt`); });
+    const e = el('div', { class: 'startpkt' + (erStart || erSlutt ? ' valgt' : ''), title: s.navn }); e.append(el('i'), el('span', {}, erStart && erSlutt ? `${s.navn}, start og slutt` : erStart ? `${s.navn}, start` : erSlutt ? `${s.navn}, slutt og bil` : s.navn));
+    e.addEventListener('click', ev => { ev.stopPropagation(); lukkPopup(); const op = { ...state.oppsett, dagoppsett: state.oppsett.dagoppsett.map(x => ({ ...x })) }; op.dagoppsett[state.dag - 1].start = s.id; lagreOppsett(op); toast(`${s.navn} er startpunkt for dag ${state.dag}`); });
     startMarkers.push(new maplibregl.Marker({ element: e, anchor: 'center' }).setLngLat([s.lon, s.lat]).addTo(map));
   }
 }
@@ -895,8 +929,9 @@ function finnFelter(graf, art, dag, tidligere, cfg) {
   const N = graf.nodes.length; const val = new Float32Array(N).fill(-1); const alle = [];
   for (let ix = 0; ix < N; ix++) {
     const n = graf.nodes[ix]; if (!n.ok) continue; const s = scoreAv(n, art); if (s < 0) continue; if (!iHoydesone(n, art, cfg)) continue;
-    let naer = false; for (let d = 1; d < dag && !naer; d++) { const r = tidligere[d]; if (r && r.naer && r.naer[n.k]) naer = true; }
-    if (naer) continue; val[ix] = s * rotasjon(n.k, dag, tidligere, cfg.rotasjon); alle.push(val[ix]);
+    // cells inside an earlier day's corridor (rotasjon.radius_m) are not target cells; further out only the rotation penalty applies
+    let gaatt = false; for (let d = 1; d < dag && !gaatt; d++) { const r = tidligere[d]; if (r && r.besokt && r.besokt[n.k]) gaatt = true; }
+    if (gaatt) continue; val[ix] = s * rotasjon(n.k, dag, tidligere, cfg.rotasjon); alle.push(val[ix]);
   }
   // threshold: the red cores of the day, i.e. the upper quantile of today's scores, never below min_score_maal
   alle.sort((a, b) => a - b); const kv = alle.length ? alle[Math.min(alle.length - 1, Math.floor(alle.length * (cfg.rute.felt_kvantil || 0.75)))] : 0;
@@ -999,7 +1034,9 @@ function planleggDag(dag, o, graf, tidligere, cfg, steder, startPt, sluttPt, vin
         const L = f.lines;
         for (const [li, side] of [[0, 'lo'], [0, 'hi'], [L.length - 1, 'lo'], [L.length - 1, 'hi']]) {
           if (avvist.has(`${fi}|${li}|${side}`)) continue; const ix = L[li][side]; if (!isFinite(Dcur.t[ix])) continue;
-          const util = f.middel - R.transport_straff_per_km * Dcur.m[ix] / 1000; if (!best || util > best.util) best = { f, fi, li, side, ix, util };
+          // mean score, minus transport, plus a bonus for large fields (long sweeps = more new ground per km)
+          const util = f.middel - R.transport_straff_per_km * Dcur.m[ix] / 1000 + (R.storrelse_bonus || 0) * Math.min(1, f.size / 200);
+          if (!best || util > best.util) best = { f, fi, li, side, ix, util };
         }
       });
       if (!best) { logg.push(`fase mot ${slutt === baseN ? 'bua' : 'slutt'}: ingen flere felt`); return; }
@@ -1059,13 +1096,27 @@ function planleggDag(dag, o, graf, tidligere, cfg, steder, startPt, sluttPt, vin
 }
 
 function beregnMiddel() { for (const a of ARTER) { let s = 0, n = 0; for (const node of GRAF.nodes) { const v = node.p[scoreKey(a)]; if (v != null && v >= 0) { s += v; n++; } } RUTE.middel[a] = n ? s / n : 0; } }
-function ruteSignatur() { const o = state.oppsett; return JSON.stringify([o.dato, o.dager, o.form, o.start_tid, o.timer, o.start, o.slutt, o.sloyfe, o.arter, o.egen, CFG.habitat.versjon, state.grid && state.grid.metadata && state.grid.metadata.bygget]); }
+function ruteSignatur() { const o = state.oppsett; return JSON.stringify([o.dato, o.dager, o.form, o.start_tid, o.timer, o.dagoppsett, o.arter, o.egen, CFG.habitat.versjon, CFG.route.versjon, state.grid && state.grid.metadata && state.grid.metadata.bygget]); }
 function lagreRuter() { RUTE.sig = ruteSignatur(); store.set('jakt.ruter', { sig: RUTE.sig, dager: RUTE.dager }); }
 function gjenopprettRuter() { const s = store.get('jakt.ruter', null); if (s && s.sig === ruteSignatur()) { RUTE.dager = s.dager || {}; RUTE.sig = s.sig; } else { RUTE.dager = {}; RUTE.sig = null; } }
+function planMedOpplegg(d, o, plan, dato, vind) {
+  const startPt = punkt(plan.start) || punkt('hukebu') || CFG.steder.steder[0]; const sluttPt = plan.gjennomgang ? punkt(plan.slutt) : null;
+  const oo = { ...o, sloyfe: plan.sloyfe }; return planleggDag(d, oo, GRAF, RUTE.dager, CFG.route, CFG.steder.steder, startPt, sluttPt, vind, RUTE.middel);
+}
 function lagDag(d) {
-  const o = state.oppsett; const startPt = punkt(o.start) || punkt('hukebu') || CFG.steder.steder[0]; const sluttPt = o.slutt === 'samme' ? null : punkt(o.slutt);
-  const dato = isoDate(addDays(o.dato, d - 1)); const vind = vindMorgen(dato, +o.start_tid.slice(0, 2));
-  const r = planleggDag(d, o, GRAF, RUTE.dager, CFG.route, CFG.steder.steder, startPt, sluttPt, vind, RUTE.middel); r.dato = dato; RUTE.dager[d] = r; return r;
+  const o = state.oppsett; const dato = isoDate(addDays(o.dato, d - 1)); const vind = vindMorgen(dato, +o.start_tid.slice(0, 2));
+  const plan = planFor(d, o); let r = planMedOpplegg(d, o, plan, dato, vind); r.plan = plan;
+  if (r.feil) {
+    // the day's setup gave no route: try the species default, the same start without the loop, then every other start point
+    const std = CFG.route.standard_per_art[plan.art] || {}; const kand = [];
+    if (std.start) { const s = std.start, e = std.slutt === 'samme' ? std.start : std.slutt; if (s !== plan.start || e !== plan.slutt || plan.sloyfe) kand.push({ start: s, slutt: e, sloyfe: false, gjennomgang: s !== e, navn: 'standard for arten' }); }
+    if (plan.sloyfe) kand.push({ start: plan.start, slutt: plan.start, sloyfe: false, gjennomgang: false, navn: 'samme start uten sløyfe' });
+    for (const p of punktListe()) if (p.id !== plan.start) kand.push({ start: p.id, slutt: p.id, sloyfe: false, gjennomgang: false, navn: `start og slutt ${p.navn}` });
+    let best = null;
+    for (const k of kand) { const rk = planMedOpplegg(d, o, k, dato, vind); if (rk.feil) continue; const verdi = rk.stats.m * rk.stats.andelOver60; if (!best || verdi > best.verdi) best = { rk, k, verdi }; }
+    if (best) { const feil = r.feil; r = best.rk; r.plan = { ...plan, ...best.k, art: plan.art, begrunnelse: '' }; r.forslag = `${feil} Brukt i stedet: ${opplegTekst(r.plan)}`; }
+  }
+  r.dato = dato; RUTE.dager[d] = r; return r;
 }
 function lagRuter(fraDag) {
   if (!GRAF) { toast('Cellene er ikke lastet ennå'); return; }
@@ -1102,12 +1153,15 @@ function tegnRute() {
   const frag = document.createDocumentFragment();
   if (!GRAF) { box.replaceChildren(el('div', { class: 'empty' }, 'Laster cellene før ruter kan legges.')); return; }
   if (!r) {
-    frag.append(el('div', { class: 'empty' }, `Ingen rute for dag ${state.dag} ennå. Ruten legges innenfor ${b.maks_km} km, ${b.maks_hoydemeter} høydemeter og ${fmt.dec(o.timer)} timer, fra ${(punkt(o.start) || {}).navn || 'startpunktet'}.`));
+    const plan = planFor(state.dag);
+    frag.append(el('div', { class: 'empty' }, `Ingen rute for dag ${state.dag} ennå. ${opplegTekst(plan)} Budsjett ${b.maks_km} km, ${b.maks_hoydemeter} høydemeter og ${fmt.dec(o.timer)} timer.`));
     frag.append(el('div', { class: 'actions-row' }, el('button', { class: 'btn btn-primary', onclick: () => lagRuter(1) }, `Lag ruter for dag 1–${o.dager}`)));
     box.replaceChildren(frag); return;
   }
-  if (r.feil) { frag.append(el('div', { class: 'empty' }, `Dag ${state.dag}: ${r.feil}`)); frag.append(el('div', { class: 'actions-row' }, el('button', { class: 'btn btn-primary', onclick: () => lagRuter(1) }, 'Lag ruter på nytt'))); box.replaceChildren(frag); return; }
+  if (r.feil) { frag.append(el('div', { class: 'empty' }, `Dag ${state.dag}: ${r.feil} Ingen av alternativene (artens standard, uten sløyfe, andre startpunkt) ga rute heller.`)); frag.append(el('div', { class: 'actions-row' }, el('button', { class: 'btn btn-primary', onclick: () => lagRuter(1) }, 'Lag ruter på nytt'))); box.replaceChildren(frag); return; }
   const st = r.stats;
+  if (r.forslag) { const w = el('div', { class: 'status warn' }, r.forslag); w.style.margin = '0 0 var(--s-3)'; w.style.whiteSpace = 'normal'; frag.append(w); }
+  if (r.plan) frag.append(el('div', { class: 'small', style: 'margin-bottom: var(--s-2)' }, opplegTekst(r.plan)));
   const tall = el('div'); tall.append(el('span', { class: 'num' }, fmt.dec(st.m / 1000), el('small', {}, 'km')), el('span', { class: 'num', style: 'margin-left: var(--s-4)' }, fmt.int(st.up), el('small', {}, 'hm')));
   frag.append(tall);
   const overlappOk = st.overlapp <= CFG.route.rute.overlapp_maal_pst;
@@ -1149,6 +1203,7 @@ function gpxForDager(dager) {
   for (const d of dager) {
     const r = RUTE.dager[d]; if (!r || r.feil) continue;
     s += `<wpt lat="${r.start.lat.toFixed(6)}" lon="${r.start.lon.toFixed(6)}"><name>${xmlEsc(`Dag ${d} start, ${r.start.navn || ''}`)}</name></wpt>`;
+    if (r.plan && r.plan.gjennomgang) s += `<wpt lat="${r.slutt.lat.toFixed(6)}" lon="${r.slutt.lon.toFixed(6)}"><name>${xmlEsc(`Dag ${d} slutt og bil, ${navnPaa(r.plan.slutt)}`)}</name></wpt>`;
     if (r.base) s += `<wpt lat="${r.base.lat.toFixed(6)}" lon="${r.base.lon.toFixed(6)}"><name>${xmlEsc(`${r.base.navn}, lunsj`)}</name></wpt>`;
     for (const m of r.maal) s += `<wpt lat="${m.lat.toFixed(6)}" lon="${m.lon.toFixed(6)}"><ele>${m.h}</ele><name>${xmlEsc(`Dag ${d} felt ${m.nr}`)}</name><desc>${xmlEsc(`Middelscore ${m.verdi}, ${m.ha} ha, ${ART_NAVN[r.art]}`)}</desc></wpt>`;
     s += gpxTrk(`Dag ${d} rute, ${ART_NAVN[r.art]}, ${r.dato}`, r.path, true);
@@ -1172,9 +1227,10 @@ async function boot() {
   tegnSlicer(); tegnPanel(); tegnLagvelger();
   await initKart();
   brukTema();
-  hentVaer().then(() => tegnVaer());
+  hentVaer().then(() => { tegnVaer(); tegnPanel(); });
   if (!fraHash && !store.get(LS.oppsett, null)) apneOppsett(true);
   else skrivHash();
+  map.once('idle', () => { window.__jakt.klar = true; });
 }
 boot().catch(e => { console.error(e); $('#dag-tittel').textContent = 'Noe gikk galt'; $('#dag-under').textContent = `Fikk ikke lastet oppsettet: ${e.message}. Last siden på nytt.`; });
 </script>

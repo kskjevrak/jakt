@@ -24,7 +24,7 @@
     }
   },
   "gange": {
-    "_doc": "Tobler-lignende fart: fart = flat_kmt * exp(-k * |helning + offset|). Terrengfaktor skalerer per arealtype.",
+    "_doc": "Tobler-lignende fart: fart = flat_kmt * exp(-k * |helning + offset|). Terrengfaktor skalerer per arealtype; 'sti' gjelder alle veglenker fra N50 (bilveg, traktorveg, sti).",
     "flat_kmt": 3.0,
     "k": 3.5,
     "offset": 0.05,
@@ -47,7 +47,7 @@
     "straff_helning_over_grader": 35,
     "vind_inn_i_beste_parti": true,
     "lunsj_min": 30,
-    "_doc": "Felt = sammenhengende celler med score over terskelen for dagens art, der terskelen er den høyeste av min_score_maal og felt_kvantil-persentilen av dagens score i jaktfeltet (etter rotasjonsstraff), slik at feltene følger de røde kjernene. Felt over felt_maks_celler deles i biter. Ruten går gjennom feltene i parallelle drag på tvers av lengderetningen med sveip_avstand_m mellom dragene. Celler ruten har passert samme dag får kostnadsfaktor samme_dag_straff innen samme_dag_radius_m og samme_dag_straff_ytre innen samme_dag_ytre_radius_m, slik at retur og transport legges en annen vei. Neste felt velges etter middelscore minus transport_straff_per_km per km transport. Start, slutt og steder er aldri mål. krev_hoydesone krever at målceller ligger innenfor artens høydesone i habitat.json. overlapp_maal_pst er målet for andel av ruten innenfor 100 m av seg selv. lunsj_min trekkes fra tiden når sløyfe om bua er valgt. reserve_faktor er sikkerhetsmargin på gangtiden hjem før et nytt drag legges til. morgen_andel er andelen av tiden som brukes før lunsj i bua.",
+    "_doc": "Felt = sammenhengende celler med score over terskelen for dagens art, der terskelen er den høyeste av min_score_maal og felt_kvantil-persentilen av dagens score i jaktfeltet (etter rotasjonsstraff), slik at feltene følger de røde kjernene. Felt over felt_maks_celler deles i biter. Ruten går gjennom feltene i parallelle drag på tvers av lengderetningen med sveip_avstand_m mellom dragene. Celler ruten har passert samme dag får kostnadsfaktor samme_dag_straff innen samme_dag_radius_m og samme_dag_straff_ytre innen samme_dag_ytre_radius_m, slik at retur og transport legges en annen vei. Neste felt velges etter middelscore minus transport_straff_per_km per km transport. Start, slutt og steder er aldri mål. krev_hoydesone krever at målceller ligger innenfor artens høydesone i habitat.json. overlapp_maal_pst er målet for andel av ruten innenfor 100 m av seg selv. lunsj_min trekkes fra tiden når sløyfe om bua er valgt. reserve_faktor er sikkerhetsmargin på gangtiden hjem før et nytt drag legges til. morgen_andel er andelen av tiden som brukes før lunsj i bua. alternativ_ved_feil: når dagens opplegg ikke gir rute, prøves artens standard, samme start uten sløyfe og hvert annet startpunkt; det beste etter km i celler over 60 brukes og vises som forslag. storrelse_bonus legges til feltets middelscore i feltvalget, skalert med feltets størrelse opp til 50 ha, så store felt med lange drag foretrekkes.",
     "sveip_avstand_m": 200,
     "felt_min_celler": 12,
     "felt_maks_celler": 400,
@@ -60,7 +60,13 @@
     "samme_dag_ytre_radius_m": 300,
     "felt_kvantil": 0.75,
     "reserve_faktor": 1.15,
-    "morgen_andel": 0.55
+    "morgen_andel": 0.55,
+    "alternativ_ved_feil": [
+      "standard_for_art",
+      "uten_sloyfe",
+      "andre_startpunkter"
+    ],
+    "storrelse_bonus": 10
   },
   "rotasjon": {
     "_doc": "Besøkte celler straffes: faktor = 1 - styrke * 0.5^(dager_siden / halveringstid_dager). Straffen gjelder innenfor radius_m fra sporet.",
@@ -110,5 +116,36 @@
     "vind_unngaa_snaufjell_ms": 10,
     "vind_sterk_ms": 14,
     "cache_minutter_fallback": 60
+  },
+  "standard_per_art": {
+    "_doc": [
+      "Standard start og slutt per art når dagen står på 'auto'. 'samme' betyr slutt = start. gjennomgang = start og slutt er ulike steder, da må bilen stå ved sluttpunktet.",
+      "snu_ved_vind_fra: [fra, til] grader. Hvis morgenvinden (første tre felttimer) i vindpunkt kommer fra denne sektoren, byttes start og slutt."
+    ],
+    "storfugl": {
+      "start": "mele",
+      "slutt": "troddebakken",
+      "sloyfe": false,
+      "vindpunkt": "fjord",
+      "snu_ved_vind_fra": [
+        135,
+        225
+      ]
+    },
+    "lirype": {
+      "start": "hukebu",
+      "slutt": "samme",
+      "sloyfe": true
+    },
+    "orrfugl": {
+      "start": "hukebu",
+      "slutt": "samme",
+      "sloyfe": true
+    },
+    "blandet": {
+      "start": "hukebu",
+      "slutt": "samme",
+      "sloyfe": true
+    }
   }
 }
