@@ -1,0 +1,496 @@
+{
+  "_doc": [
+    "Habitatregler for score 0–100 per art. Leses av scripts/build_scores.py (raster 10 m) og vises i nettsiden.",
+    "score = 100 * (sum(vekt_i * f_i) / sum(vekt_i)) * prod(straff_j). Alle f_i og straff_j ligger i [0, 1].",
+    "Faktortyper: 'trapes' = stykkevis lineær medlemskapsfunksjon med punkter [a, b, c, d]: 0 under a, stiger til 1 ved b, 1 til c, faller til 0 ved d.",
+    "  'klasser' = oppslag kode -> verdi, 'ellers' brukes for koder som ikke er listet. 'flagg' = sann/usann -> verdi.",
+    "Straff bruker samme typer, men verdien skaleres til [min, 1]: faktor = min + (1 - min) * f.",
+    "Variabler (10 m raster, bygget av scripts/build_grid.py): se 'variabler' nederst. Celler uten høydedata får score null (ukjent).",
+    "Kilder: Kartverket NHM DTM (høyde, helning, eksposisjon, TPI), NIBIO AR5 WMS (arealtype, treslag, bonitet, grunnforhold),",
+    "  NIBIO SR16 (treslag, middelhøyde, kronedekning, alder, bonitet H40), Kartverket N50 (bekker, vann, stier)."
+  ],
+  "versjon": 1,
+  "opplosning_m": 10,
+  "globalt": {
+    "ikke_habitat": {
+      "_doc": "Celler med disse AR5-arealtypene får score 0 og regnes som ikke gåbare (vann, hav, snø/is, bebygd, samferdsel).",
+      "ar5_arealtype": [
+        81,
+        82,
+        70,
+        11,
+        12
+      ]
+    },
+    "ukjent": {
+      "_doc": "Hvis AR5 mangler (kode 0) brukes nøytral verdi for AR5-baserte faktorer og cellen merkes ukjent_ar5. Hvis høyde mangler blir score null.",
+      "noytral_verdi": 0.5
+    }
+  },
+  "arter": {
+    "lirype": {
+      "navn": "Lirype",
+      "farge": "#b5651d",
+      "faktorer": {
+        "hoydesone": {
+          "_doc": "650–900 moh, myk kant 70 m under og 60 m over",
+          "type": "trapes",
+          "kilde": "hoyde_moh",
+          "punkter": [
+            580,
+            650,
+            900,
+            960
+          ],
+          "vekt": 3.0
+        },
+        "helning": {
+          "_doc": "under 25 grader; full verdi til 20, null ved 30",
+          "type": "trapes",
+          "kilde": "helning_grader",
+          "punkter": [
+            0,
+            0,
+            20,
+            30
+          ],
+          "vekt": 2.0
+        },
+        "vier_bjorkekratt": {
+          "_doc": "nærhet til lauv-/blandingsskog (AR5 treslag 32/33), proxy for vier og bjørkekratt",
+          "type": "trapes",
+          "kilde": "dist_lauv_m",
+          "punkter": [
+            0,
+            0,
+            100,
+            350
+          ],
+          "vekt": 2.5
+        },
+        "bekkedrag": {
+          "_doc": "nærhet til bekk/elv (N50)",
+          "type": "trapes",
+          "kilde": "dist_bekk_m",
+          "punkter": [
+            0,
+            0,
+            150,
+            450
+          ],
+          "vekt": 2.0
+        },
+        "myrkant": {
+          "_doc": "nærhet til myr (AR5 60)",
+          "type": "trapes",
+          "kilde": "dist_myr_m",
+          "punkter": [
+            0,
+            0,
+            120,
+            350
+          ],
+          "vekt": 2.0
+        },
+        "apent_terreng": {
+          "_doc": "snaufjell og myr best, glissen skog ok, innmark dårlig",
+          "type": "klasser",
+          "kilde": "arealtype_komb",
+          "klasser": {
+            "50": 1.0,
+            "60": 1.0,
+            "30": 0.6,
+            "23": 0.5,
+            "22": 0.3,
+            "21": 0.2
+          },
+          "ellers": 0.0,
+          "vekt": 2.0
+        },
+        "sol_morgen": {
+          "_doc": "sør- og østvendte sider (eksposisjon 60–200 grader) om morgenen; flatt terreng får 0.6",
+          "type": "trapes",
+          "kilde": "eksposisjon_grader",
+          "punkter": [
+            20,
+            60,
+            200,
+            260
+          ],
+          "flatt_verdi": 0.6,
+          "vekt": 1.0
+        }
+      },
+      "straff": {
+        "steinur": {
+          "_doc": "unngå blokkmark (41) og fjell i dagen (42)",
+          "type": "klasser",
+          "kilde": "ar5_grunnforhold",
+          "klasser": {
+            "41": 0.0,
+            "42": 0.5
+          },
+          "ellers": 1.0,
+          "min": 0.2
+        },
+        "topper": {
+          "_doc": "unngå toppene: TPI 500 m over 15 m straffes, over 45 m gir min",
+          "type": "trapes",
+          "kilde": "tpi500_m",
+          "punkter": [
+            -9999,
+            -9999,
+            15,
+            45
+          ],
+          "min": 0.4
+        }
+      }
+    },
+    "orrfugl": {
+      "navn": "Orrfugl",
+      "farge": "#4b3f72",
+      "faktorer": {
+        "hoydesone": {
+          "_doc": "500–720 moh",
+          "type": "trapes",
+          "kilde": "hoyde_moh",
+          "punkter": [
+            440,
+            500,
+            720,
+            790
+          ],
+          "vekt": 3.0
+        },
+        "stor_myr_med_skog": {
+          "_doc": "nærhet til myr over 1 ha med skog på minst to sider (størst vekt)",
+          "type": "trapes",
+          "kilde": "dist_stormyr_m",
+          "punkter": [
+            0,
+            0,
+            200,
+            500
+          ],
+          "vekt": 3.0
+        },
+        "myrkant": {
+          "_doc": "nærhet til all myr",
+          "type": "trapes",
+          "kilde": "dist_myr_m",
+          "punkter": [
+            0,
+            0,
+            150,
+            400
+          ],
+          "vekt": 2.5
+        },
+        "arealtype": {
+          "_doc": "myr best, så åpen fastmark og skog",
+          "type": "klasser",
+          "kilde": "arealtype_komb",
+          "klasser": {
+            "60": 1.0,
+            "50": 0.6,
+            "30": 0.6,
+            "23": 0.4,
+            "21": 0.2,
+            "22": 0.3
+          },
+          "ellers": 0.2,
+          "vekt": 1.5
+        },
+        "glissen_skog": {
+          "_doc": "SR16 kronedekning 15–45 prosent er glissen; tett skog og helt åpent gir mindre",
+          "type": "trapes",
+          "kilde": "sr16_kronedekning_pst",
+          "punkter": [
+            0,
+            15,
+            45,
+            75
+          ],
+          "vekt": 2.0
+        },
+        "furu_bjork": {
+          "_doc": "SR16 treslag: furu og lauv (bjørk) foretrukket, gran lite",
+          "type": "klasser",
+          "kilde": "sr16_treslag",
+          "klasser": {
+            "2": 1.0,
+            "3": 0.9,
+            "1": 0.4,
+            "0": 0.5
+          },
+          "ellers": 0.5,
+          "vekt": 1.5
+        },
+        "skoggrense": {
+          "_doc": "nærhet til grensa mellom skog og åpent (AR5 30 mot 50/60)",
+          "type": "trapes",
+          "kilde": "dist_skoggrense_m",
+          "punkter": [
+            0,
+            0,
+            150,
+            450
+          ],
+          "vekt": 2.0
+        },
+        "hogstflate": {
+          "_doc": "AR5 skog med SR16 middelhøyde under 4 m eller kronedekning under 15 prosent",
+          "type": "flagg",
+          "kilde": "flagg_hogstflate",
+          "sann": 1.0,
+          "usann": 0.5,
+          "vekt": 1.0
+        }
+      },
+      "straff": {
+        "tett_skog": {
+          "_doc": "kronedekning over 70 prosent straffes, 90 gir min",
+          "type": "trapes",
+          "kilde": "sr16_kronedekning_pst",
+          "punkter": [
+            -1,
+            -1,
+            70,
+            90
+          ],
+          "min": 0.5
+        },
+        "steinur": {
+          "type": "klasser",
+          "kilde": "ar5_grunnforhold",
+          "klasser": {
+            "41": 0.0,
+            "42": 0.5
+          },
+          "ellers": 1.0,
+          "min": 0.3
+        }
+      }
+    },
+    "storfugl": {
+      "navn": "Storfugl",
+      "farge": "#1f5e3b",
+      "faktorer": {
+        "hoydesone": {
+          "_doc": "300–620 moh",
+          "type": "trapes",
+          "kilde": "hoyde_moh",
+          "punkter": [
+            240,
+            300,
+            620,
+            690
+          ],
+          "vekt": 3.0
+        },
+        "furudominert": {
+          "_doc": "SR16 treslag 2 = furu",
+          "type": "klasser",
+          "kilde": "sr16_treslag",
+          "klasser": {
+            "2": 1.0,
+            "1": 0.45,
+            "3": 0.35,
+            "0": 0.2
+          },
+          "ellers": 0.2,
+          "vekt": 3.0
+        },
+        "barskog_ar5": {
+          "_doc": "AR5 treslag 31 barskog, 33 blanding",
+          "type": "klasser",
+          "kilde": "ar5_treslag",
+          "klasser": {
+            "31": 1.0,
+            "33": 0.7,
+            "32": 0.3,
+            "39": 0.1
+          },
+          "ellers": 0.3,
+          "vekt": 1.0
+        },
+        "trehoyde": {
+          "_doc": "middelhøyde over 10 m (SR16, meter)",
+          "type": "trapes",
+          "kilde": "sr16_hoyde_m",
+          "punkter": [
+            6,
+            11,
+            28,
+            40
+          ],
+          "vekt": 2.5
+        },
+        "bonitet": {
+          "_doc": "lav (12) til middels (13) bonitet best; impediment og høg bonitet mindre",
+          "type": "klasser",
+          "kilde": "ar5_bonitet",
+          "klasser": {
+            "12": 1.0,
+            "13": 1.0,
+            "11": 0.5,
+            "14": 0.5,
+            "15": 0.3
+          },
+          "ellers": 0.5,
+          "vekt": 1.5
+        },
+        "blabaermark_proxy": {
+          "_doc": "PROXY: ingen vegetasjonskart finnes. Jorddekt (44) og grunnlendt (43) mark under furu antas å bære blåbær",
+          "type": "klasser",
+          "kilde": "ar5_grunnforhold",
+          "klasser": {
+            "44": 1.0,
+            "43": 0.8,
+            "45": 0.6,
+            "42": 0.3,
+            "41": 0.1
+          },
+          "ellers": 0.5,
+          "vekt": 1.0
+        },
+        "myr_naerhet": {
+          "type": "trapes",
+          "kilde": "dist_myr_m",
+          "punkter": [
+            0,
+            0,
+            250,
+            700
+          ],
+          "vekt": 1.5
+        },
+        "bekkedal": {
+          "type": "trapes",
+          "kilde": "dist_bekk_m",
+          "punkter": [
+            0,
+            0,
+            200,
+            600
+          ],
+          "vekt": 1.0
+        },
+        "rygger": {
+          "_doc": "tiur på rygger: TPI 150 m over 8 m",
+          "type": "trapes",
+          "kilde": "tpi150_m",
+          "punkter": [
+            0,
+            8,
+            9999,
+            9999
+          ],
+          "vekt": 1.0
+        },
+        "glenner": {
+          "_doc": "halvåpen skog, kronedekning 40–65 prosent",
+          "type": "trapes",
+          "kilde": "sr16_kronedekning_pst",
+          "punkter": [
+            25,
+            40,
+            65,
+            85
+          ],
+          "vekt": 1.0
+        }
+      },
+      "straff": {
+        "tett_granplantefelt": {
+          "_doc": "SR16 gran, kronedekning over 70 prosent og alder under 70 år",
+          "type": "flagg",
+          "kilde": "flagg_tett_gran",
+          "sann": 0.0,
+          "usann": 1.0,
+          "min": 0.3
+        },
+        "ung_skog": {
+          "_doc": "skog med middelhøyde under 8 m",
+          "type": "flagg",
+          "kilde": "flagg_ungskog",
+          "sann": 0.0,
+          "usann": 1.0,
+          "min": 0.3
+        },
+        "apent": {
+          "_doc": "snaufjell uten skog er lite aktuelt for storfugl",
+          "type": "klasser",
+          "kilde": "arealtype_komb",
+          "klasser": {
+            "50": 0.0,
+            "60": 0.5
+          },
+          "ellers": 1.0,
+          "min": 0.4
+        }
+      }
+    }
+  },
+  "visning": {
+    "_doc": "Fargeskala for score-PNG. Score under min_vist tegnes gjennomsiktig.",
+    "min_vist": 25,
+    "stopp": [
+      [
+        25,
+        "#ffffb2",
+        0.35
+      ],
+      [
+        45,
+        "#fecc5c",
+        0.55
+      ],
+      [
+        60,
+        "#fd8d3c",
+        0.75
+      ],
+      [
+        75,
+        "#f03b20",
+        0.85
+      ],
+      [
+        90,
+        "#bd0026",
+        0.95
+      ]
+    ],
+    "utenfor_jaktfelt_alpha": 0.35,
+    "buffer_m": 500
+  },
+  "variabler": {
+    "hoyde_moh": "Høyde over havet, m (DTM 10 m)",
+    "helning_grader": "Helning, grader",
+    "eksposisjon_grader": "Eksposisjon 0–360 (nord = 0, øst = 90), -1 der helning < 2 grader",
+    "tpi150_m": "Topografisk posisjonsindeks: høyde minus middel innen 150 m (positiv = rygg, negativ = søkk)",
+    "tpi500_m": "Som over, radius 500 m (positiv = topp/høydedrag)",
+    "ar5_arealtype": "AR5 arealtype: 11 bebygd, 12 samferdsel, 21 fulldyrka, 22 overflatedyrka, 23 innmarksbeite, 30 skog, 50 åpen fastmark, 60 myr, 70 snø/is, 81 ferskvann, 82 hav, 0 ukjent",
+    "arealtype_komb": "AR5 arealtype der åpen fastmark (50) er satt til myr (60) der N50 har myr. AR5 er ikke detaljkartlagt over skoggrensa, så myrene på snaufjellet kommer fra N50",
+    "ar5_treslag": "AR5 treslag: 31 barskog, 32 lauvskog, 33 blandingsskog, 39 ikke tresatt, 0 ukjent",
+    "ar5_bonitet": "AR5 skogbonitet: 11 impediment, 12 lav, 13 middels, 14 høg, 15 særs høg, 0 ikke relevant",
+    "ar5_grunnforhold": "AR5 grunnforhold: 41 blokkmark, 42 fjell i dagen, 43 grunnlendt, 44 jorddekt, 45 organiske jordlag, 46 konstruert, 0 ukjent",
+    "sr16_treslag": "SR16 dominerende treslag: 1 gran, 2 furu, 3 lauv, 0 ikke skog",
+    "sr16_hoyde_m": "SR16 middelhøyde (Lorey), m",
+    "sr16_kronedekning_pst": "SR16 kronedekning, prosent",
+    "sr16_alder_aar": "SR16 bestandsalder, år",
+    "sr16_bonitet_h40": "SR16 bonitet H40",
+    "sr16_volum_m3ha": "SR16 volum med bark, m3/ha",
+    "dist_myr_m": "Avstand til nærmeste myr (AR5 60 eller N50 Myr), m",
+    "dist_stormyr_m": "Avstand til nærmeste myr (AR5 eller N50) over 1 ha med skog på minst to av fire sider, m",
+    "dist_bekk_m": "Avstand til nærmeste bekk/elv (N50 ElvBekk), m",
+    "dist_vann_m": "Avstand til nærmeste innsjø/elvflate (N50), m",
+    "dist_skoggrense_m": "Avstand til grensa mellom skog (AR5 30) og åpen fastmark/myr (50/60), m",
+    "dist_lauv_m": "Avstand til nærmeste lauv- eller blandingsskog (AR5 32/33), m",
+    "flagg_hogstflate": "AR5 skog og (SR16 middelhøyde < 4 m eller kronedekning < 15 prosent)",
+    "flagg_ungskog": "AR5 skog og SR16 middelhøyde < 8 m",
+    "flagg_tett_gran": "SR16 gran, kronedekning > 70 prosent og alder < 70 år"
+  }
+}

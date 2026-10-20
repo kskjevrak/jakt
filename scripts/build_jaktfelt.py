@@ -53,9 +53,10 @@ def main() -> dict:
     # cross-check: every REST teig point (fnr 0) should fall inside the dissolved polygon
     missing = [p for p in pts if p["fnr"] == 0 and p["snr"] == 0 and not jaktfelt.buffer(5).contains(
         gpd.points_from_xy([p["x"]], [p["y"]])[0])]
-    flagged = sorted({f"{r['matrikkelnummer']} ({'flere matrikkelenheter' if r['flere_matrikkelenheter'] else ''}"
-                      f"{'tvist' if r['tvist'] else ''}{'uregistrert jordsameie' if r['uregistrert_jordsameie'] else ''})"
-                      for r in own + feste if r["flere_matrikkelenheter"] or r["tvist"] or r["uregistrert_jordsameie"]})
+    # Teiger shared by several matrikkelenheter (e.g. 49/3,5) are ordinary hunting ground per Knut 2026-10-20;
+    # only disputes and unregistered commons are flagged.
+    flagged = sorted({f"{r['matrikkelnummer']} ({'tvist' if r['tvist'] else 'uregistrert jordsameie'})"
+                      for r in own + feste if r["tvist"] or r["uregistrert_jordsameie"]})
 
     # neighbours within 500 m, clipped to 1200 m
     ring = jaktfelt.buffer(BUFFER_NABO_M)

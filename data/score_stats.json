@@ -1,0 +1,69 @@
+{
+ "lirype": {
+  "middel_jaktfelt": 49.80829620361328,
+  "median_jaktfelt": 51.06026077270508,
+  "andel_over_60_pst": 40.03626913944923,
+  "ha_over_60": 856.6,
+  "andel_over_75_pst": 12.737198302454711,
+  "maks": 100.0,
+  "middel_faktorer_jaktfelt": {
+   "hoydesone": 0.47823306918144226,
+   "helning": 0.8197858333587646,
+   "vier_bjorkekratt": 0.6142241358757019,
+   "bekkedrag": 0.48444321751594543,
+   "myrkant": 0.4821622669696808,
+   "apent_terreng": 0.6792400479316711,
+   "sol_morgen": 0.5928477644920349,
+   "straff_steinur": 0.9297910332679749,
+   "straff_topper": 0.8947171568870544
+  }
+ },
+ "orrfugl": {
+  "middel_jaktfelt": 44.247047424316406,
+  "median_jaktfelt": 39.06866455078125,
+  "andel_over_60_pst": 28.744227785152088,
+  "ha_over_60": 615.0,
+  "andel_over_75_pst": 16.323917067060517,
+  "maks": 96.96969604492188,
+  "middel_faktorer_jaktfelt": {
+   "hoydesone": 0.5436263084411621,
+   "stor_myr_med_skog": 0.2376147359609604,
+   "myrkant": 0.5344611406326294,
+   "arealtype": 0.5473347306251526,
+   "glissen_skog": 0.19339728355407715,
+   "furu_bjork": 0.6963828802108765,
+   "skoggrense": 0.6567788124084473,
+   "hogstflate": 0.5270121693611145,
+   "straff_tett_skog": 0.9263207912445068,
+   "straff_steinur": 0.9385671019554138
+  }
+ },
+ "storfugl": {
+  "middel_jaktfelt": 38.2214469909668,
+  "median_jaktfelt": 19.494909286499023,
+  "andel_over_60_pst": 32.562302529492044,
+  "ha_over_60": 696.69,
+  "andel_over_75_pst": 22.554637402082673,
+  "maks": 100.0,
+  "middel_faktorer_jaktfelt": {
+   "hoydesone": 0.46371912956237793,
+   "furudominert": 0.48007065057754517,
+   "barskog_ar5": 0.45508283376693726,
+   "trehoyde": 0.3744645416736603,
+   "bonitet": 0.6180009245872498,
+   "blabaermark_proxy": 0.7048794627189636,
+   "myr_naerhet": 0.7199116349220276,
+   "bekkedal": 0.5919741988182068,
+   "rygger": 0.2870420217514038,
+   "glenner": 0.16420654952526093,
+   "straff_tett_granplantefelt": 0.9927998781204224,
+   "straff_ung_skog": 0.9607262015342712,
+   "straff_apent": 0.7516372799873352
+  }
+ },
+ "_grid": {
+  "celler": 14816,
+  "mb": 7.28
+ },
+ "_bygget": "2026-10-20T13:06:12Z"
+}

@@ -1,37 +1,37 @@
 {
-  "_kommentar": "Startpunkter for dagsruter. lat/lon i WGS84. null = ikke satt ennå, klikkes inn i kartet. 'kilde' sier hvor koordinaten kommer fra.",
+  "_kommentar": "Startpunkter for dagsruter. lat/lon i WGS84. Rediger fritt; nettsiden leser denne filen direkte.",
   "startpunkter": [
     {
       "id": "mele",
       "navn": "Mele",
       "lat": 58.78733,
       "lon": 7.77308,
-      "kilde": "Kartverket stedsnavn-API, navneobjekttype 'Annen kulturdetalj', Bygland",
-      "verifisert": false
+      "kilde": "Kartverket stedsnavn-API (Annen kulturdetalj, Bygland)",
+      "verifisert": true
     },
     {
-      "id": "gateskar",
-      "navn": "Gateskar",
-      "lat": 58.77906,
-      "lon": 7.71075,
-      "kilde": "Kartverket stedsnavn-API, nærmeste treff 'Garteskar' (Skar) i Bygland. Må verifiseres.",
-      "verifisert": false
+      "id": "garteskar",
+      "navn": "Garteskar",
+      "lat": 58.77630,
+      "lon": 7.71930,
+      "kilde": "Bunnen av Garteskar, oppgitt av Knut 2026-10-20",
+      "verifisert": true
     },
     {
       "id": "troddebakken",
       "navn": "Troddebakken",
-      "lat": null,
-      "lon": null,
-      "kilde": "Ikke i stedsnavnregisteret. Klikkes inn i kartet.",
-      "verifisert": false
+      "lat": 58.78270,
+      "lon": 7.75603,
+      "kilde": "Oppgitt av Knut 2026-10-20",
+      "verifisert": true
     },
     {
       "id": "enden-av-vegen",
       "navn": "Enden av vegen",
-      "lat": null,
-      "lon": null,
-      "kilde": "Lokalt navn. Klikkes inn i kartet.",
-      "verifisert": false
+      "lat": 58.77440,
+      "lon": 7.69272,
+      "kilde": "Oppgitt av Knut 2026-10-20",
+      "verifisert": true
     }
   ]
 }

@@ -15,3 +15,10 @@ Thumbs.db
 # lokale hemmeligheter skal aldri inn
 .env
 .env.*
+
+# installerte skills: kun de to vi bruker holdes i repoet
+.agents/
+skills-lock.json
+.claude/skills/*
+!.claude/skills/emil-design-eng/
+!.claude/skills/frontend-design/

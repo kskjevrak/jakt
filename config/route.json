@@ -1,0 +1,66 @@
+{
+  "_doc": [
+    "Parametere for dagsruter, rotasjon, støkk-estimat og værterskler. Leses av nettsiden (index.html).",
+    "Alle tall som vises i UI skal kunne spores hit eller til config/habitat.json."
+  ],
+  "versjon": 1,
+  "jegere": {
+    "standard_antall": 2,
+    "avstand_m": 60,
+    "_doc": "To parallelle spor med 60 m avstand (normalt 40–80 m). Sveipebredde per jeger brukes i støkk-estimatet."
+  },
+  "form": {
+    "lett": {"maks_km": 8, "maks_hoydemeter": 400},
+    "normal": {"maks_km": 12, "maks_hoydemeter": 700},
+    "hard": {"maks_km": 16, "maks_hoydemeter": 1000}
+  },
+  "gange": {
+    "_doc": "Tobler-lignende fart: fart = flat_kmt * exp(-k * |helning + offset|). Terrengfaktor skalerer per arealtype.",
+    "flat_kmt": 3.0,
+    "k": 3.5,
+    "offset": 0.05,
+    "terrengfaktor": {"30": 0.8, "50": 0.9, "60": 0.6, "23": 1.0, "21": 1.0, "sti": 1.3},
+    "pause_min_per_time": 10
+  },
+  "rute": {
+    "cellestorrelse_m": 50,
+    "min_score_maal": 55,
+    "maks_antall_maal": 8,
+    "korridorbredde_m": 80,
+    "straff_utenfor_jaktfelt": "forbudt",
+    "straff_vann": "forbudt",
+    "straff_helning_over_grader": 35,
+    "vind_inn_i_beste_parti": true
+  },
+  "rotasjon": {
+    "_doc": "Besøkte celler straffes: faktor = 1 - styrke * 0.5^(dager_siden / halveringstid_dager). Straffen gjelder innenfor radius_m fra sporet.",
+    "halveringstid_dager": 2.0,
+    "styrke": 0.8,
+    "radius_m": 150
+  },
+  "logg": {
+    "_doc": "Egne støkk/felt-registreringer gir bonus i nærliggende celler neste dag.",
+    "bonus": 0.3,
+    "radius_m": 250,
+    "halveringstid_dager": 3.0
+  },
+  "stokk": {
+    "_doc": "Takseringstall Setesdalen 2026 (NJFF Aust-Agder). Forventet støkk = sum over celler i sveipet av tetthet_cell * areal * oppdagelsesandel, der tetthet_cell = tetthet_fugl_per_km2 * score / middelscore_jaktfelt.",
+    "tetthet_fugl_per_km2": 8.5,
+    "voksne_per_km2": 3.9,
+    "kyllinger_per_par": 2.3,
+    "oppdagelsesandel_uten_hund": 0.35,
+    "sveipebredde_per_jeger_m": 40
+  },
+  "vaer": {
+    "_doc": "MET Locationforecast compact for tre punkter. Vind over terskel på fjellpunktet markerer timen 'unngå snaufjell'.",
+    "punkter": [
+      {"id": "fjord", "navn": "Fjorden", "lat": 58.7890, "lon": 7.7900, "hoyde_moh": 250},
+      {"id": "litjonni", "navn": "Litjønni", "lat": 58.7880, "lon": 7.7000, "hoyde_moh": 670},
+      {"id": "hakefjellet", "navn": "Hakefjellet", "lat": 58.7774, "lon": 7.6383, "hoyde_moh": 850}
+    ],
+    "vind_unngaa_snaufjell_ms": 10,
+    "vind_sterk_ms": 14,
+    "cache_minutter_fallback": 60
+  }
+}
