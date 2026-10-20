@@ -1,0 +1,17 @@
+# rådata og lokale byggeprodukter
+raw/
+*.tmp
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+
+# lokale hemmeligheter skal aldri inn
+.env
+.env.*
