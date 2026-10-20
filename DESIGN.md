@@ -64,9 +64,10 @@ Mørk modus bytter også bakgrunnskartet til Kartverkets gråtonetopo (`topograa
 
 ## Typografi
 
-Én familie, to vekter. **Schibsted Grotesk** (Google Fonts, norsk opphav, åpen lisens) i 400 og 700,
+Én familie, to vekter. **Schibsted Grotesk** (norsk opphav, SIL Open Font License) i 400 og 700,
 med `font-feature-settings: "tnum"` på alle tall. Fallback `system-ui, -apple-system, "Segoe UI",
-sans-serif`. Fontfilene caches av service workeren etter første besøk.
+sans-serif`. Fontfilene er selvhostet i `fonts/` (variabel woff2, latin og latin-ext), fordi oppdraget
+ikke tillater eksterne kall utover Kartverket, NIBIO, MET og Artskart. Service workeren cacher dem.
 
 Skala med forhold 1,25 fra 16 px:
 

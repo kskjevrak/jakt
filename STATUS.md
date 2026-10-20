@@ -1,6 +1,6 @@
 # STATUS
 
-Sist oppdatert: 2026-10-20 (habitatregler v3, steder og kjerner lagt inn, index.html under arbeid)
+Sist oppdatert: 2026-10-20 (index.html delsteg 1: kart, lag og oppsettpanel på Pages)
 
 ## Gjort
 - Plan, sjekkliste, repo på `kskjevrak/jakt`. GitHub Pages (main, rot) → https://kskjevrak.github.io/jakt/ . Actions aktivert
@@ -14,7 +14,8 @@ Sist oppdatert: 2026-10-20 (habitatregler v3, steder og kjerner lagt inn, index.
 - `scripts/build_scores.py` → `data/score_<art>.tif/.png/.json`, `data/dominant.tif/.png/.json` (dominerende art der score > 50), `data/grid.geojson` (14 816 celler, 7,4 MB, med `dom`), `data/score_stats.json`, forhåndsvisninger i `raw/preview/`
 - `scripts/compare_scores.py`: sammenligner grid mot forrige versjon, viser største endringer med nærmeste N50-stedsnavn og sjekker navngitte kjerneområder
 - `kontroll.html` viser score per art, dominerende art og N50-myr som lag
-- `DESIGN.md`: tokens for farger (lys/mørk), typografi (Schibsted Grotesk 400/700), avstand, bevegelse, kartstil og språk
+- `DESIGN.md`: tokens for farger (lys/mørk), typografi (Schibsted Grotesk 400/700, selvhostet i `fonts/`), avstand, bevegelse, kartstil og språk
+- `index.html` delsteg 1: MapLibre 5.6.0 med Kartverket topo/gråtone, score fra `grid.geojson` (farger og terskler fra `habitat.json`, filtrerbar på høydesone), 10 m-PNG og dominerende art som valgfrie lag, kjerner, Artskart, jaktfelt, naboteiger (skravur), N50 vann/bekker/stier/myr, WMS-sannhetslag (AR5, SR16 treslag/bonitet, matrikkelkart), Hukebu-markør med popup og handlinger, startpunkter, slicer (dag/art/høydesone), oppsettpanel (localStorage + URL-hash), mobilark, lys/mørk modus, cellepopup. Kjerner-bonus regnes i nettleseren på 50 m-celler
 
 ## Score v3 innenfor jaktfeltet (raster 10 m)
 | Art | ha ≥ 60 | mål | middel | dominerende art (score > 50) |
@@ -28,7 +29,8 @@ Ingen art over 50 på 537 ha. Orrfugl og lirype beholdes som v2 etter Knuts besl
 Flyet og Litjønni er ikke orrfugl-kjerner i dataene (1–2 % myr, ingen myr over 1 ha med skog på to sider). Gytjønn og myrene øst for Bergebekken er det. Se forslag i chat / neste justering.
 
 ## Gjenstår
-- Trinn 6: `index.html` + `sw.js` etter `DESIGN.md` (kart/lag → oppsett → vær → rute → rotasjon → logg → eksport → offline)
+- Knut tester kart, lag og oppsett på mobil (Pages)
+- Trinn 6 videre: vær → rute (inkl. sløyfe om Hukebu, avstand/gangtid fra bua) → rotasjon → logg (med polygon-eksport til `kjerner.geojson`) → eksport → offline (`sw.js`)
 - Trinn 7: Actions for værfallback (6 t) og ukentlig matrikkelsjekk
 - Trinn 8–9: README med oppdateringsrutine, `/briefing` og `/tune`
 
