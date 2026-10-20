@@ -83,7 +83,7 @@ button { cursor: pointer; border: 0; background: none; padding: 0; }
 .switch input:checked::before { transform: translateX(18px); }
 .switch .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: var(--s-2); vertical-align: -1px; }
 input[type="date"], input[type="time"], input[type="number"], select { min-height: var(--hit); padding: 0 var(--s-3); border-radius: var(--r-control); border: 1px solid var(--line); background: var(--panel-solid); width: 100%; }
-label.field { display: block; margin-bottom: var(--s-4); }
+.field { display: block; margin-bottom: var(--s-4); }
 label.field > span, .field-title { display: block; color: var(--ink-2); font: var(--t-small); margin-bottom: var(--s-1); }
 .range { width: 100%; accent-color: var(--accent); min-height: var(--hit); }
 
@@ -245,12 +245,12 @@ dialog[open] { animation: dlg var(--d-panel) var(--ease-out); }
     </div>
     <div class="dlg-body">
       <label class="field"><span>Første jaktdag</span><input type="date" name="dato" required></label>
-      <label class="field"><span>Antall dager</span>
-        <div class="seg" id="f-dager" data-name="dager"></div></label>
-      <label class="field"><span>Antall jegere</span>
-        <div class="seg" id="f-jegere" data-name="jegere"></div></label>
-      <label class="field"><span>Fysisk form</span>
-        <div class="seg" id="f-form" data-name="form"></div><span class="small" id="form-hint"></span></label>
+      <div class="field"><span class="field-title">Antall dager</span>
+        <div class="seg" id="f-dager" data-name="dager"></div></div>
+      <div class="field"><span class="field-title">Antall jegere</span>
+        <div class="seg" id="f-jegere" data-name="jegere"></div></div>
+      <div class="field"><span class="field-title">Fysisk form</span>
+        <div class="seg" id="f-form" data-name="form"></div><span class="small" id="form-hint"></span></div>
       <label class="field"><span>Starttid</span><input type="time" name="start_tid" step="900"></label>
       <label class="field"><span>Timer i felt</span><input type="number" name="timer" min="2" max="12" step="0.5"></label>
       <label class="field"><span>Startpunkt</span><select name="start" id="f-start"></select></label>
