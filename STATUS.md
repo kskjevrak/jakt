@@ -7,7 +7,7 @@ Sist oppdatert: 2026-10-20 (vær, rute, rotasjon og GPX-eksport på Pages; stopp
 - Verktøy: `frontend-design` + `emil-design-eng` i `.claude/skills/` (øvrige skills og `.agents/` gitignored), uv + Python 3.12 venv, pinnet `requirements.txt`
 - Alle seks datakilder hentet maskinelt (`scripts/download.py`, detaljer i `data/SOURCES.md`)
 - Jaktfelt 2139 ha verifisert av Knut. Startpunkter i `config/start.json` verifisert
-- `config/habitat.json` v3: lirype 680–900 med mildere topp-/steinurstraff, orrfugl 520–700 + flatt_myrlandskap + helningsstraff, storfugl 300–500 + trehøyde 12/17 + furu vekt 4 + gammelskog. `kjerner`-regel for lokalkunnskap (bonus på 50 m-celler i nettsiden)
+- `config/habitat.json` v3: lirype 680–900 med mildere topp-/steinurstraff, orrfugl 520–700 + flatt_myrlandskap + helningsstraff, storfugl 300–500 + trehøyde 8/13 + furu vekt 4 (gran 0,3, lauv 0,25) + gammelskog. `kjerner`-regel for lokalkunnskap (bonus på 50 m-celler i nettsiden)
 - `config/kjerner.geojson` (tom, fylles fra jaktloggen), `config/steder.json` med Hukebu (589 moh mot DTM, oppgitt ca 585)
 - `config/route.json`: budsjetter, gangfart, rotasjon, loggbonus, støkk-kalibrering, værpunkter
 - `scripts/build_grid.py` → 10 m rastere i `raw/derived/`, N50-vektorer i `data/`
