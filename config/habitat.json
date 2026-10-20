@@ -9,7 +9,7 @@
     "Kilder: Kartverket NHM DTM (høyde, helning, eksposisjon, TPI), NIBIO AR5 WMS (arealtype, treslag, bonitet, grunnforhold),",
     "  NIBIO SR16 (treslag, middelhøyde, kronedekning, alder, bonitet H40), Kartverket N50 (bekker, vann, stier)."
   ],
-  "versjon": 2,
+  "versjon": 3,
   "opplosning_m": 10,
   "globalt": {
     "ikke_habitat": {
@@ -302,29 +302,29 @@
       "farge": "#1f5e3b",
       "faktorer": {
         "hoydesone": {
-          "_doc": "300–560 moh",
+          "_doc": "300–500 moh, myk kant ned til 240 og opp til 580",
           "type": "trapes",
           "kilde": "hoyde_moh",
           "punkter": [
             240,
             300,
-            560,
-            640
+            500,
+            580
           ],
           "vekt": 3.0
         },
         "furudominert": {
-          "_doc": "SR16 treslag 2 = furu",
+          "_doc": "SR16 treslag 2 = furu. Gran 0,3 og lauv 0,25; størst vekt av alle storfugl-faktorer",
           "type": "klasser",
           "kilde": "sr16_treslag",
           "klasser": {
             "2": 1.0,
-            "1": 0.45,
-            "3": 0.35,
+            "1": 0.3,
+            "3": 0.25,
             "0": 0.2
           },
           "ellers": 0.2,
-          "vekt": 3.0
+          "vekt": 4.0
         },
         "barskog_ar5": {
           "_doc": "AR5 treslag 31 barskog, 33 blanding",
@@ -340,12 +340,12 @@
           "vekt": 1.0
         },
         "trehoyde": {
-          "_doc": "middelhøyde over 13 m (SR16, meter), null under 8 m",
+          "_doc": "middelhøyde over 17 m (SR16, meter), null under 12 m",
           "type": "trapes",
           "kilde": "sr16_hoyde_m",
           "punkter": [
-            8,
-            13,
+            12,
+            17,
             28,
             40
           ],
@@ -533,5 +533,21 @@
     "flagg_hogstflate": "AR5 skog og (SR16 middelhøyde < 4 m eller kronedekning < 15 prosent)",
     "flagg_ungskog": "AR5 skog og SR16 middelhøyde < 8 m",
     "flagg_tett_gran": "SR16 gran, kronedekning > 70 prosent og alder < 70 år"
+  },
+  "kjerner": {
+    "_doc": [
+      "Kjerneområder fra lokalkunnskap: config/kjerner.geojson (FeatureCollection, WGS84). Hver feature har properties",
+      "{navn, arter: ['orrfugl', ...], bonus: 0.0–maks_bonus, kilde, dato, notat}. Polygoner eksporteres fra jaktloggen i nettsiden.",
+      "Bonusen brukes i nettsiden på 50 m-cellene (cellesenter i polygon): score_ny = score + bonus * (100 - score).",
+      "Score-rasterne (PNG/COG) er rene modellverdier og endres ikke av kjerner, slik at modell og lokalkunnskap kan skilles i kartet."
+    ],
+    "fil": "config/kjerner.geojson",
+    "standard_bonus": 0.25,
+    "maks_bonus": 0.5,
+    "arter_tillatt": [
+      "lirype",
+      "orrfugl",
+      "storfugl"
+    ]
   }
 }

@@ -1,0 +1,23 @@
+{
+  "_doc": [
+    "Faste steder som vises som markører med ikon og popup, og som kan velges som start, slutt eller via-punkt for ruten.",
+    "type styrer ikonet: 'bu' (hytte med skråtak), 'parkering', 'vadested', 'utsikt'. roller: hvilke rutefunksjoner stedet kan ha.",
+    "'base' betyr at ruten kan legges som sløyfe med stedet som midtpunkt (ut om morgenen, lunsj, nytt område om ettermiddagen),",
+    "og at rutestatistikken viser avstand og gangtid fra stedet til dagens beste celler.",
+    "hoyde_moh verifiseres mot DTM når stedet legges inn; 'hoyde_kilde' sier hvor tallet kommer fra."
+  ],
+  "steder": [
+    {
+      "id": "hukebu",
+      "navn": "Hukebu",
+      "type": "bu",
+      "lat": 58.7923505,
+      "lon": 7.6900220,
+      "hoyde_moh": 589,
+      "hoyde_kilde": "Kartverket høyde-API (DTM 1 m) 588,8 m og egen DTM 10 m 588,7 m; oppgitt ca 585",
+      "popup": "Hukebu. Bua ved Hukebuvatnet, ca 585 moh. Ly, lunsj og base for dagene på platået.",
+      "roller": ["start", "slutt", "via", "base"],
+      "lagt_inn": "2026-10-20"
+    }
+  ]
+}

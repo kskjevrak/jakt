@@ -1,0 +1,47 @@
+{
+  "type": "FeatureCollection",
+  "metadata": {
+    "_doc": "Kjerneområder fra lokalkunnskap. Tom til felt-eksport fra jaktloggen fyller den. Format: se 'kjerner' i config/habitat.json.",
+    "eksempel": {
+      "type": "Feature",
+      "properties": {
+        "navn": "Eksempelmyr",
+        "arter": [
+          "orrfugl"
+        ],
+        "bonus": 0.25,
+        "kilde": "jaktlogg",
+        "dato": "2026-10-22",
+        "notat": "3 støkk to dager på rad"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              7.7,
+              58.78
+            ],
+            [
+              7.71,
+              58.78
+            ],
+            [
+              7.71,
+              58.785
+            ],
+            [
+              7.7,
+              58.785
+            ],
+            [
+              7.7,
+              58.78
+            ]
+          ]
+        ]
+      }
+    }
+  },
+  "features": []
+}
