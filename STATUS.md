@@ -1,6 +1,6 @@
 # STATUS
 
-Sist oppdatert: 2026-10-20 (index.html delsteg 1: kart, lag og oppsettpanel på Pages)
+Sist oppdatert: 2026-10-20 (vær, rute, rotasjon og GPX-eksport på Pages; stopp for test)
 
 ## Gjort
 - Plan, sjekkliste, repo på `kskjevrak/jakt`. GitHub Pages (main, rot) → https://kskjevrak.github.io/jakt/ . Actions aktivert
@@ -15,22 +15,25 @@ Sist oppdatert: 2026-10-20 (index.html delsteg 1: kart, lag og oppsettpanel på 
 - `scripts/compare_scores.py`: sammenligner grid mot forrige versjon, viser største endringer med nærmeste N50-stedsnavn og sjekker navngitte kjerneområder
 - `kontroll.html` viser score per art, dominerende art og N50-myr som lag
 - `DESIGN.md`: tokens for farger (lys/mørk), typografi (Schibsted Grotesk 400/700, selvhostet i `fonts/`), avstand, bevegelse, kartstil og språk
+- `index.html` delsteg 2 (vær): MET Locationforecast compact for fjord/Litjønni/Hakefjellet med localStorage-cache etter Expires, fallback `data/forecast.json`; Sunrise 3.0 med `data/sun.json` som fallback; værkort per dag med vindpil + tall, temperatur, nedbør, skydekke, timestripe for Hakefjellet og «unngå snaufjell» over terskel fra `route.json`. `scripts/fetch_forecast.py` + `.github/workflows/forecast.yml` (hver 6. time)
+- `index.html` delsteg 3 (rute og rotasjon): graf over 50 m-celler innenfor jaktfeltet (vann, bebygd og helning over 35° er sperret), Tobler-lignende gangtid fra `route.json`, Dijkstra, målpartier fra score (min 55, inntil 8, rotasjonsstraff fra tidligere dager og 300 m-utelukkelse), innsettings-heuristikk med 2-opt innenfor km/høydemeter/timer, sløyfe om Hukebu med lunsj, gangretning valgt mot morgenvinden ved Litjønni. To jegerspor ±30 m, korridor, retningspiler, nummererte partier, «sist besøkt»-skravur med alder. Rutestatistikk med km, hm, tid, terrengandeler, forventet støkk (8,5 fugl/km² × score/middel × 35 %), avstand og gangtid fra bua. GPX per dag og alle dager (rute, to spor, veipunkter), PNG av kartet. Ruter lagres i localStorage med signatur av oppsettet
 - `index.html` delsteg 1: MapLibre 5.6.0 med Kartverket topo/gråtone, score fra `grid.geojson` (farger og terskler fra `habitat.json`, filtrerbar på høydesone), 10 m-PNG og dominerende art som valgfrie lag, kjerner, Artskart, jaktfelt, naboteiger (skravur), N50 vann/bekker/stier/myr, WMS-sannhetslag (AR5, SR16 treslag/bonitet, matrikkelkart), Hukebu-markør med popup og handlinger, startpunkter, slicer (dag/art/høydesone), oppsettpanel (localStorage + URL-hash), mobilark, lys/mørk modus, cellepopup. Kjerner-bonus regnes i nettleseren på 50 m-celler
 
-## Score v3 innenfor jaktfeltet (raster 10 m)
+## Score v3b innenfor jaktfeltet (raster 10 m)
 | Art | ha ≥ 60 | mål | middel | dominerende art (score > 50) |
 |---|---|---|---|---|
 | Lirype | 856 | 650–850 | 54 | 808 ha |
 | Orrfugl | 463 | 200–350 | 35 | 313 ha |
-| Storfugl | 524 | 350–500 | 32 | 482 ha |
+| Storfugl | 594 | 350–500 | 34 | 552 ha |
 
-Ingen art over 50 på 537 ha. Orrfugl og lirype beholdes som v2 etter Knuts beslutning.
+Ingen art over 50 på 518 ha. Storfugl v3b: høyde 300–500, furu vekt 4 (gran 0,3, lauv 0,25), trehøyde 8/13 etter Knuts valg. Orrfugl og lirype som v2.
 
 Flyet og Litjønni er ikke orrfugl-kjerner i dataene (1–2 % myr, ingen myr over 1 ha med skog på to sider). Gytjønn og myrene øst for Bergebekken er det. Se forslag i chat / neste justering.
 
 ## Gjenstår
-- Knut tester kart, lag og oppsett på mobil (Pages)
-- Trinn 6 videre: vær → rute (inkl. sløyfe om Hukebu, avstand/gangtid fra bua) → rotasjon → logg (med polygon-eksport til `kjerner.geojson`) → eksport → offline (`sw.js`)
+- Knut tester på PC: velg dag 1–3, lag ruter, se dem på Pages, eksporter GPX
+- Trinn 6 videre: logg (støkk/felt med GPS, GeoJSON-eksport, polygon-eksport til `kjerner.geojson`, loggbonus) → offline (`sw.js`, manifest)
+- Mobiltest er utsatt; mobilstrukturen (ark, slicer) er beholdt
 - Trinn 7: Actions for værfallback (6 t) og ukentlig matrikkelsjekk
 - Trinn 8–9: README med oppdateringsrutine, `/briefing` og `/tune`
 
