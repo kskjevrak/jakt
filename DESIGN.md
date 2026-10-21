@@ -157,7 +157,9 @@ Regler fra designskillen som gjelder her:
 ## Kartet
 
 - Bakgrunn: Kartverket `topo`, WMTS webmercator, i begge moduser.
-- Jaktfelt: linje 2,5 px `--ink`, ingen fyll. Naboteiger: skravur 45° i `--nabo`, 1 px linje.
+- Jaktfelt: linje 3 px mørk oransje `#C2410C` (4 px over zoom 13) med 1,5 px hvit kant under, lik i begge
+  moduser så den leses på grønn skog, hvitt snaufjell og blått vann. Teiger innenfor: 1 px grå `#8A9196` stiplet.
+  Naboteiger: skravur 45° i `--nabo` (44 % dekkevne), 1 px linje. Startpunkter og Hukebu har hvit ring.
 - Score: 50 m-celler og PNG-overlegg med dekkevne 0,55, justerbart med glidebryter i lagvelgeren.
 - Popup: én om gangen, maks 280 px bred, følger panelets modus, ord i stedet for koder, celle-id i grått nederst.
 - Rute: 4 px `--accent`, hvit kant 1 px for lesbarhet på topo. To jegerspor: 1,5 px `--ink`, stiplet.
