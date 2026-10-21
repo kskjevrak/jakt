@@ -3,7 +3,7 @@
     "Parametere for dagsruter, rotasjon, støkk-estimat og værterskler. Leses av nettsiden (index.html).",
     "Alle tall som vises i UI skal kunne spores hit eller til config/habitat.json."
   ],
-  "versjon": 2,
+  "versjon": 3,
   "jegere": {
     "standard_antall": 2,
     "avstand_m": 60,
@@ -115,18 +115,13 @@
     "_doc": [
       "Standard start og slutt per art når dagen står på 'auto'. 'samme' betyr slutt = start. gjennomgang = start og slutt er ulike steder.",
       "Er avstanden mellom start og slutt over to_biler_over_m, trengs to biler; ellers må bilen stå ved sluttpunktet.",
-      "snu_ved_vind_fra: [fra, til] grader. Hvis morgenvinden (første tre felttimer) i vindpunkt kommer fra denne sektoren, byttes start og slutt."
+      "Retningen (hvilken ende som er start) velges ikke her, men av retningsvalg: begge retninger beregnes og den beste velges."
     ],
     "to_biler_over_m": 2000,
     "storfugl": {
       "start": "mele",
       "slutt": "enden-av-vegen",
-      "sloyfe": false,
-      "vindpunkt": "fjord",
-      "snu_ved_vind_fra": [
-        135,
-        225
-      ]
+      "sloyfe": false
     },
     "lirype": {
       "start": "troddebakken",
@@ -182,5 +177,16 @@
       "spor": 0.6,
       "omrade": 0.7
     }
+  },
+  "retningsvalg": {
+    "_doc": [
+      "Hver dag beregnes i begge retninger: gjennomgang med start og slutt byttet, rundtur som samme sløyfe gått motsatt vei.",
+      "Hvert drag får vinden fra værpunktet nærmest dragets høyde (fjorden 250, Litjønni 670, Hakefjellet 850 moh), morgenvind = første tre felttimer.",
+      "Et drag teller som 'mot vinden' når vinkelen mellom gangretning og vindretningen det blåser fra er under motvind_grader.",
+      "score = vekt_vind * andel dragmeter mot vinden + vekt_overlapp * (1 - overlapp/100). Høyest score velges; den andre vises som forkastet og kan hentes med «Snu retning»."
+    ],
+    "vekt_vind": 0.6,
+    "vekt_overlapp": 0.4,
+    "motvind_grader": 60
   }
 }

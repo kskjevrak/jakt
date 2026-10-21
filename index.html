@@ -433,15 +433,16 @@ function planFor(d, o) {
   const std = CFG.route.standard_per_art[art] || CFG.route.standard_per_art.blandet;
   const dato = isoDate(addDays(o.dato, d - 1)); const h0 = +o.start_tid.slice(0, 2);
   let start = dc.start && dc.start !== 'auto' ? dc.start : std.start, slutt = dc.slutt && dc.slutt !== 'auto' ? dc.slutt : std.slutt;
-  const sloyfe = dc.sloyfe != null ? dc.sloyfe : !!std.sloyfe; let begrunnelse = '';
-  if ((!dc.start || dc.start === 'auto') && (!dc.slutt || dc.slutt === 'auto') && std.snu_ved_vind_fra) {
-    const v = vindVed(std.vindpunkt || 'fjord', dato, h0); const [a, b] = std.snu_ved_vind_fra;
-    if (v && v.fra >= a && v.fra <= b) { [start, slutt] = [std.slutt, std.start]; begrunnelse = `Morgenvind fra ${kompass(v.fra)} ${fmt.int(v.ms)} m/s ved fjorden, derfor snudd retning.`; }
-    else begrunnelse = v ? `Morgenvind fra ${kompass(v.fra)} ved fjorden, standard retning.` : 'Standard retning for arten; vind ukjent.';
-  }
+  const sloyfe = dc.sloyfe != null ? dc.sloyfe : !!std.sloyfe;
   if (slutt === 'samme') slutt = start;
   const gjennomgang = slutt !== start;
-  return { art, start, slutt, sloyfe: sloyfe && !gjennomgang, gjennomgang, begrunnelse, auto: (!dc.start || dc.start === 'auto') && (!dc.slutt || dc.slutt === 'auto') };
+  // the direction (which end is the start) is decided in lagDag by computing both and scoring wind against the sweeps and overlap
+  return { art, start, slutt, sloyfe: sloyfe && !gjennomgang, gjennomgang, begrunnelse: '', dato, h0, auto: (!dc.start || dc.start === 'auto') && (!dc.slutt || dc.slutt === 'auto') };
+}
+// wind as a function of elevation: the forecast point closest in height, morning hours
+function vindFunksjon(dato, h0) {
+  const pts = CFG.route.vaer.punkter; const cache = {};
+  return h => { let best = pts[0]; for (const p of pts) if (Math.abs(p.hoyde_moh - h) < Math.abs(best.hoyde_moh - h)) best = p; if (!(best.id in cache)) { const v = vindVed(best.id, dato, h0); cache[best.id] = v ? { ...v, hoyde: best.hoyde_moh, navn: best.navn } : null; } return cache[best.id]; };
 }
 function navnPaa(id) { const p = punkt(id); return p ? p.navn.replace(/ \(\d+ moh\)$/, '') : id; }
 function opplegTekst(plan) {
@@ -550,7 +551,7 @@ function tegnPanel() {
     $('#tall-ha').innerHTML = st ? `${fmt.int(st.ha60)}<small>ha over 60, middel ${fmt.int(st.middel)}</small>` : (gridLoaded ? '0<small>ha</small>' : '–<small>laster celler</small>');
     $('#peek-tall').innerHTML = st ? `${fmt.int(st.ha60)}<span class="unit">ha</span>` : '';
     const b = CFG.route.form[o.form];
-    const plan = planFor(state.dag);
+    const rr = RUTE.dager[state.dag]; const plan = rr && rr.plan ? rr.plan : planFor(state.dag);
     const rader = [
       ['Art i kartet', state.art === 'blandet' ? 'Dominerende art per celle' : ART_NAVN[state.art]],
       ['Høydesone', SONER.find(s => s[0] === state.sone)[1]],
@@ -816,7 +817,7 @@ function tegnStedMarkorer() {
 function oppdaterStartMarkorer() {
   // only the day's chosen start and end are shown; the other start points appear when the layer "Alle startpunkter" is on
   for (const m of startMarkers) m.remove(); startMarkers = [];
-  const o = state.oppsett; if (!o) return; const plan = planFor(state.dag);
+  const o = state.oppsett; if (!o) return; const rr = RUTE.dager[state.dag]; const plan = rr && rr.plan ? rr.plan : planFor(state.dag);
   const pts = [...CFG.start.startpunkter.filter(s => s.lat != null)];
   if (o.egen) pts.push({ id: 'egen', navn: 'Eget punkt', lat: o.egen.lat, lon: o.egen.lon });
   for (const s of pts) {
@@ -1193,10 +1194,10 @@ function planleggDag(dag, o, graf, tidligere, cfg, steder, startPt, sluttPt, vin
   const ret = legg(naa(), sluttN); if (!ret.ok) return { dag, art, feil: 'Sluttpunktet kan ikke nås til fots innenfor jaktfeltet.' }; leggTil(ret.seg, ret.kost, 'transport');
   if (!partier.length) return { dag, art, feil: `Ingen felt med score over ${R.min_score_maal} som får plass i budsjettet fra ${startPt.navn || 'startpunktet'}.` };
   const np = path;
-  // wind: heading of the first sweep against the morning wind
-  let retning = 'Ingen vindretning i varselet.';
-  const forsteDrag = etapper.find(e => e.type === 'drag');
-  if (vind && forsteDrag) { const a = graf.nodes[forsteDrag.fra], bb = graf.nodes[forsteDrag.til]; const diff = vinkelDiff(retningGrader([a.x, a.y], [bb.x, bb.y]), vind.fra); retning = `${diff <= 60 ? 'Første drag går mot vinden' : diff <= 120 ? 'Første drag går i sidevind' : 'Første drag går med vinden i ryggen'}, vind fra ${kompass(vind.fra)} ${fmt.int(vind.ms)} m/s om morgenen. Snu dragretningen i feltet om det passer bedre.`; }
+  // wind against the sweeps: each sweep gets the wind at its own elevation; share of sweep metres walked into the wind
+  const drag = etapper.filter(e => e.type === 'drag').map(e => { const a = graf.nodes[e.fra], bb = graf.nodes[e.til]; return { ax: a.x, ay: a.y, ah: a.h, bx: bb.x, by: bb.y, bh: bb.h, m: e.m }; });
+  const mv = motvindAndel(drag, vind, R);
+  const retning = mv.tekst;
   const rr = cfg.rotasjon.radius_m, sveipR = R.korridorbredde_m / 2 + 10; const besokt = {}, naer = {}, sveip = new Set();
   for (const ix of np) { for (const m of nodesWithin(graf, ix, rr)) besokt[graf.nodes[m].k] = true; for (const m of nodesWithin(graf, ix, 300)) naer[graf.nodes[m].k] = true; for (const m of nodesWithin(graf, ix, sveipR)) sveip.add(m); }
   const andel = { skog: 0, apent: 0, myr: 0, annet: 0 }; const stokk = {}; for (const a of ARTER) stokk[a] = 0; const S = cfg.stokk;
@@ -1210,9 +1211,30 @@ function planleggDag(dag, o, graf, tidligere, cfg, steder, startPt, sluttPt, vin
   const glatt = xy.map(p => toLL(p[0], p[1]));
   const Dbase = baseN >= 0 ? dijkstra(graf, baseN) : null;
   const maalListe = partier.map((p, i) => ({ nr: i + 1, lon: graf.nodes[p.inn].lon, lat: graf.nodes[p.inn].lat, h: Math.round(graf.nodes[p.inn].h), verdi: Math.round(p.felt.middel), ha: Math.round(p.felt.size * 0.25), drag: p.drag, fraBase: Dbase ? { m: Dbase.m[p.inn], t: Dbase.tr[p.inn] * pf } : null, lunsjFor: p.forLunsj }));
-  return { dag, art, path: pathLL, glatt, spor, maal: maalListe, besokt, naer, retning, vind, logg, base: baseN >= 0 ? { navn: base.navn, lon: graf.nodes[baseN].lon, lat: graf.nodes[baseN].lat } : null,
-           start: { lon: graf.nodes[startN].lon, lat: graf.nodes[startN].lat, navn: startPt.navn }, slutt: { lon: graf.nodes[sluttN].lon, lat: graf.nodes[sluttN].lat },
-           stats: { m: tot.m, up: tot.up, t: tot.t, lunsj, andel, stokk, sveipCeller: sveip.size, budsjett, antallMaal: partier.length, kandidater: felter.length, overlapp: overlappProsent(graf, np), andelOver60: tot.m ? mOver60 / tot.m : 0, andelDrag: tot.m ? mDrag / tot.m : 0 } };
+  return { dag, art, path: pathLL, glatt, spor, maal: maalListe, besokt, naer, retning, drag, logg, base: baseN >= 0 ? { navn: base.navn, lon: graf.nodes[baseN].lon, lat: graf.nodes[baseN].lat } : null,
+           start: { lon: graf.nodes[startN].lon, lat: graf.nodes[startN].lat, navn: startPt.navn }, slutt: { lon: graf.nodes[sluttN].lon, lat: graf.nodes[sluttN].lat, navn: sluttPt ? sluttPt.navn : startPt.navn },
+           stats: { m: tot.m, up: tot.up, t: tot.t, lunsj, andel, stokk, sveipCeller: sveip.size, budsjett, antallMaal: partier.length, kandidater: felter.length, overlapp: overlappProsent(graf, np), andelOver60: tot.m ? mOver60 / tot.m : 0, andelDrag: tot.m ? mDrag / tot.m : 0, motvind: mv.andel, vind: mv.vind } };
+}
+function motvindAndel(drag, vind, R) {
+  // drag: [{ax, ay, ah, bx, by, bh, m}] in local metres; vind: function(h) -> {fra, ms, hoyde, navn} or a fixed {fra, ms} or null
+  const vindVedH = typeof vind === 'function' ? vind : () => vind; const grader = (R.retningsvalg && R.retningsvalg.motvind_grader) || 60;
+  let dragM = 0, motM = 0, medM = 0; const brukt = {};
+  for (const d of drag) { const v = vindVedH((d.ah + d.bh) / 2); dragM += d.m; if (!v) continue; const diff = vinkelDiff(retningGrader([d.ax, d.ay], [d.bx, d.by]), v.fra); if (diff <= grader) motM += d.m; else if (diff >= 180 - grader) medM += d.m; const key = v.navn || 'vind'; brukt[key] = brukt[key] || { ...v, m: 0 }; brukt[key].m += d.m; }
+  if (!dragM) return { andel: 0, tekst: 'Ingen drag i ruten.', vind: null };
+  const hoved = Object.values(brukt).sort((a, b) => b.m - a.m)[0] || null;
+  if (!hoved) return { andel: 0, tekst: 'Ingen vindretning i varselet; retningen er valgt etter overlapp.', vind: null };
+  const andel = motM / dragM;
+  return { andel, vind: { fra: hoved.fra, ms: hoved.ms, hoyde: hoved.hoyde, navn: hoved.navn },
+           tekst: `${fmt.int(andel * 100)} % av dragmeterne mot vinden, ${fmt.int(medM / dragM * 100)} % med vinden i ryggen. Vind fra ${kompass(hoved.fra)} ${fmt.int(hoved.ms)} m/s ved ${hoved.navn || 'dragenes høyde'}${hoved.hoyde ? ` (${hoved.hoyde} moh)` : ''} om morgenen.` };
+}
+function retningScore(r, R) { const V = R.retningsvalg || { vekt_vind: 0.6, vekt_overlapp: 0.4 }; return V.vekt_vind * (r.stats.motvind || 0) + V.vekt_overlapp * (1 - (r.stats.overlapp || 0) / 100); }
+function reverserRute(r, vind, R) {
+  // the same loop walked the other way: path, tracks and field order reversed, wind share recomputed
+  const drag = r.drag.map(d => ({ ax: d.bx, ay: d.by, ah: d.bh, bx: d.ax, by: d.ay, bh: d.ah, m: d.m })).reverse();
+  const mv = motvindAndel(drag, vind, R); const n = r.maal.length;
+  return { ...r, path: r.path.slice().reverse(), glatt: r.glatt.slice().reverse(), spor: [r.spor[1].slice().reverse(), r.spor[0].slice().reverse()],
+           maal: r.maal.slice().reverse().map((m, i) => ({ ...m, nr: i + 1, lunsjFor: n > 1 ? !m.lunsjFor : m.lunsjFor })), drag, retning: mv.tekst, start: r.slutt, slutt: r.start, snudd: !r.snudd,
+           stats: { ...r.stats, motvind: mv.andel, vind: mv.vind }, alternativ: null, logg: r.logg };
 }
 
 function beregnMiddel() { for (const a of ARTER) { let s = 0, n = 0; for (const node of GRAF.nodes) { const v = node.p[scoreKey(a)]; if (v != null && v >= 0) { s += v; n++; } } RUTE.middel[a] = n ? s / n : 0; } }
@@ -1224,9 +1246,22 @@ function planMedOpplegg(d, o, plan, dato, vind) {
   const startPt = punkt(plan.start) || punkt('hukebu') || CFG.steder.steder[0]; const sluttPt = plan.gjennomgang ? punkt(plan.slutt) : null;
   const oo = { ...o, sloyfe: plan.sloyfe }; return planleggDag(d, oo, GRAF, RUTE.dager, CFG.route, CFG.steder.steder, startPt, sluttPt, vind, RUTE.middel);
 }
+function retningTekst(r) { const st = r.stats; const vei = r.plan && r.plan.gjennomgang ? `${navnPaa(r.plan.start)} → ${navnPaa(r.plan.slutt)}` : (r.snudd ? 'sløyfa motsatt vei' : 'sløyfa som lagt'); return `${vei}: ${fmt.dec(st.m / 1000)} km, ${fmt.int((st.motvind || 0) * 100)} % mot vinden, overlapp ${fmt.dec(st.overlapp)} %`; }
+function velgRetning(d, o, plan, dato, vind) {
+  // compute both directions and keep the one with the best weighted score of wind-in-the-face sweeps and low overlap
+  const R = CFG.route; let A = planMedOpplegg(d, o, plan, dato, vind); A.plan = plan; A.snudd = false;
+  let B = null;
+  if (plan.gjennomgang) { const planB = { ...plan, start: plan.slutt, slutt: plan.start }; B = planMedOpplegg(d, o, planB, dato, vind); B.plan = planB; B.snudd = true; }
+  else if (!A.feil) { B = reverserRute(A, vind, R); B.plan = plan; }
+  const kand = [A, B].filter(x => x && !x.feil).map(x => ({ x, s: retningScore(x, R) })).sort((p, q) => q.s - p.s);
+  if (!kand.length) return A;
+  const r = kand[0].x; r.valgScore = kand[0].s;
+  if (kand[1]) { const alt = kand[1].x; alt.alternativ = null; alt.valgScore = kand[1].s; r.alternativ = alt; }
+  return r;
+}
 function lagDag(d) {
-  const o = state.oppsett; const dato = isoDate(addDays(o.dato, d - 1)); const vind = vindMorgen(dato, +o.start_tid.slice(0, 2));
-  const plan = planFor(d, o); let r = planMedOpplegg(d, o, plan, dato, vind); r.plan = plan;
+  const o = state.oppsett; const dato = isoDate(addDays(o.dato, d - 1)); const vind = vindFunksjon(dato, +o.start_tid.slice(0, 2));
+  const plan = planFor(d, o); let r = velgRetning(d, o, plan, dato, vind);
   if (r.feil) {
     // the day's setup gave no route: try the species default, the same start without the loop, then every other start point
     const std = CFG.route.standard_per_art[plan.art] || {}; const kand = [];
@@ -1234,17 +1269,23 @@ function lagDag(d) {
     if (plan.sloyfe) kand.push({ start: plan.start, slutt: plan.start, sloyfe: false, gjennomgang: false, navn: 'samme start uten sløyfe' });
     for (const p of punktListe()) if (p.id !== plan.start) kand.push({ start: p.id, slutt: p.id, sloyfe: false, gjennomgang: false, navn: `start og slutt ${p.navn}` });
     let best = null;
-    for (const k of kand) { const rk = planMedOpplegg(d, o, k, dato, vind); if (rk.feil) continue; const verdi = rk.stats.m * rk.stats.andelOver60; if (!best || verdi > best.verdi) best = { rk, k, verdi }; }
-    if (best) { const feil = r.feil; r = best.rk; r.plan = { ...plan, ...best.k, art: plan.art, begrunnelse: '' }; r.forslag = `${feil} Brukt i stedet: ${opplegTekst(r.plan)}`; }
+    for (const k of kand) { const rk = velgRetning(d, o, { ...plan, ...k, art: plan.art, begrunnelse: '' }, dato, vind); if (rk.feil) continue; const verdi = rk.stats.m * rk.stats.andelOver60; if (!best || verdi > best.verdi) best = { rk, k, verdi }; }
+    if (best) { const feil = r.feil; r = best.rk; r.forslag = `${feil} Brukt i stedet: ${opplegTekst(r.plan)}`; }
   }
   r.dato = dato; RUTE.dager[d] = r; return r;
+}
+function byttRetning(d) {
+  const r = RUTE.dager[d]; if (!r || !r.alternativ) { toast('Ingen alternativ retning for dagen'); return; }
+  const alt = r.alternativ; alt.alternativ = { ...r, alternativ: null }; alt.dato = r.dato; alt.forslag = r.forslag; RUTE.dager[d] = alt;
+  lagreRuter(); oppdaterRuteLag(true); oppdaterStartMarkorer(); tegnRute();
+  toast(d < state.oppsett.dager ? `Retningen er snudd. Dag ${d + 1}–${state.oppsett.dager} ble lagt mot den forrige retningen; legg dem på nytt om det trengs.` : 'Retningen er snudd.');
 }
 function lagRuter(fraDag) {
   if (!GRAF) { toast('Cellene er ikke lastet ennå'); return; }
   const o = state.oppsett; const t0 = performance.now();
   for (let d = fraDag; d <= o.dager; d++) lagDag(d);
   for (const d of Object.keys(RUTE.dager)) if (+d > o.dager) delete RUTE.dager[d];
-  lagreRuter(); oppdaterRuteLag(true); tegnRute();
+  lagreRuter(); oppdaterRuteLag(true); oppdaterStartMarkorer(); tegnRute(); tegnPanel();
   const feil = Object.values(RUTE.dager).filter(r => r.feil).length;
   toast(feil ? `${feil} dag(er) fikk ingen rute, se panelet` : `Ruter for dag ${fraDag}–${o.dager} er lagt (${((performance.now() - t0) / 1000).toFixed(1)} s)`);
 }
@@ -1293,9 +1334,12 @@ function tegnRute() {
     ['Andel drag gjennom felt', `${fmt.int(st.andelDrag * 100)} %`],
     ['Overlapp med seg selv', `${fmt.dec(st.overlapp)} %${overlappOk ? '' : `, mål under ${CFG.route.rute.overlapp_maal_pst} %`}`],
     ['Felt', `${st.antallMaal} av ${st.kandidater} kandidater`],
-    ['Vind', r.retning],
+    ['Vind i dragene', r.retning],
+    ['Valgt retning', retningTekst(r)],
   ];
+  if (r.alternativ) rows.push(['Forkastet retning', retningTekst(r.alternativ)]);
   frag.append(...rows.map(([k, v]) => el('div', { class: 'row' }, el('span', { class: 'k' }, k), el('span', { class: 'v' }, v))));
+  if (r.alternativ) frag.append(el('div', { class: 'actions-row', style: 'margin-top: var(--s-2)' }, el('button', { class: 'btn', onclick: () => byttRetning(state.dag) }, 'Snu retning'), el('span', { class: 'small' }, `Vekting: vind ${CFG.route.retningsvalg.vekt_vind}, overlapp ${CFG.route.retningsvalg.vekt_overlapp}`)));
   const a = st.andel; const bar = el('div', { class: 'andel' }); for (const [key, col] of [['skog', '--storfugl'], ['apent', '--ink-3'], ['myr', '--mire'], ['annet', '--line']]) { const i = el('i'); i.style.width = `${a[key] * 100}%`; i.style.background = cssVar(col); bar.append(i); }
   frag.append(el('div', { class: 'small', style: 'margin-top: var(--s-3)' }, `Terreng langs sveipet: skog ${fmt.int(a.skog * 100)} %, åpent ${fmt.int(a.apent * 100)} %, myr ${fmt.int(a.myr * 100)} %`), bar);
   const sk = el('div', { class: 'stokk' }); const arterVis = r.art === 'blandet' ? ARTER : [r.art, ...ARTER.filter(x => x !== r.art)];
