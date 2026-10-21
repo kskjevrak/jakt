@@ -20,18 +20,23 @@ Sist oppdatert: 2026-10-21 (alle trinn på Pages; venter på Knuts test av logg,
 - `scripts/screenshot.py`: ekte skjermbilde av Pages i Chromium med oppsett i URL-hash → `raw/preview/`. `scripts/briefing_data.py` og `scripts/tune_data.py` for `/briefing` og `/tune` i `.claude/commands/`
 - `README.md` med oppdateringsrutine for data, habitatregler, Actions og verktøy
 
-## Siste rutekjøring (standardoppsett, 22. oktober, normal form, 7 t)
-| Dag | Art | Opplegg | km | hm | t | andel km over 60 | overlapp |
-|---|---|---|---|---|---|---|---|
-| 1 | Rype | Troddebakken rundtur | 10,1 | 581 | 6,7 | 74 % | 13,2 % |
-| 2 | Orrfugl | Troddebakken rundtur | 10,7 | 525 | 6,6 | 51 % | 18,6 % |
-| 3 | Storfugl | Gjennomgang Mele → Troddebakken | 5,5 | 594 | 6,0 | 81 % | 66,7 % |
+## Observasjonsdatabase (2026-10-21)
+- `data/observasjoner.geojson` med schema i `metadata._doc`, fem oppføringer: tiur sett ved Nånes (7 m utenfor jaktfeltgrensen, på veien) + lia mot Nånes gard som område (28 ha, 93 % innenfor), ukjent hønsefugl i nordvendt slukt, nordøstvendt li på vår side av Hakefjell som område (319 ha, 578–870 moh), to liryper medio september 2025
+- `scripts/obs_add.py` validerer og legger inn, `--fra-logg` promoterer en eksportert jaktlogg; `/obs` strukturerer fritekst og commiter etter godkjenning
+- Bonus i planlegger og kart: én mekanisme for database og logg, parametre i `route.json` under `observasjoner`, vises separat i cellepopup. Lag «Observasjoner» på som standard på stor skjerm, av på telefon
 
-Dag 3 er fortsatt svak: Mele og Troddebakken ligger 1,1 km fra hverandre, lia er bratt, og dag 2 har allerede brukt deler av storfuglbeltet. Troddebakken → Mele gir 6,4 km / 467 hm / 32 % overlapp, Mele → Enden av vegen 8,4 km / 788 hm / 24 %.
+## Siste rutekjøring (ny standardrekkefølge, 22.–24. oktober, normal form, 7 t, Node-kjøring med vind fra Ø)
+| Dag | Art | Opplegg | uten obs | med obs |
+|---|---|---|---|---|
+| 1 | Storfugl | Gjennomgang Mele → Enden av vegen, to biler | 9,1 km, 778 hm, 6,7 t, 79 % over 60, overlapp 8,1 % | uendret |
+| 2 | Rype | Troddebakken rundtur | 10,1 km, 581 hm, 6,7 t, 74 %, 13,2 % | 10,3 km, 563 hm, 6,6 t, 79 %, 11,0 %, tre felt (52 % av ruten på samme celler) |
+| 3 | Orrfugl | Troddebakken rundtur | 10,6 km, 530 hm, 6,4 t, 53 %, 15,1 % | 11,1 km, 531 hm, 6,6 t, 64 %, 20,4 %, fire felt (44 % samme celler) |
+
+I nettleseren snus storfugldagen til Enden av vegen → Mele når morgenvinden ved fjorden kommer fra sør-sektoren (varselet 22. oktober ga SØ), og tallene blir da andre (skjermbildene i `raw/preview/pages_v2_dag*.png`).
 
 ## Gjenstår / åpne spørsmål
 - Knut tester logg (GPS på mobil), offline (slå av nett etter første besøk), kjerneområde-tegning og dag 3-opplegget
-- Dag 3: vurder annen rekkefølge (storfugl først), annet sluttpunkt (Enden av vegen) eller lettere budsjett
+- Knut tester observasjonslaget, cellepopupen med bonus, og `/obs`
 - Mobiltest er utsatt; strukturen er beholdt
 
 ## Kjente problemer og valg
