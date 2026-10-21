@@ -3,7 +3,7 @@
     "Parametere for dagsruter, rotasjon, støkk-estimat og værterskler. Leses av nettsiden (index.html).",
     "Alle tall som vises i UI skal kunne spores hit eller til config/habitat.json."
   ],
-  "versjon": 1,
+  "versjon": 2,
   "jegere": {
     "standard_antall": 2,
     "avstand_m": 60,
@@ -74,12 +74,6 @@
     "styrke": 0.8,
     "radius_m": 150
   },
-  "logg": {
-    "_doc": "Egne støkk/felt-registreringer gir bonus i nærliggende celler neste dag.",
-    "bonus": 0.3,
-    "radius_m": 250,
-    "halveringstid_dager": 3.0
-  },
   "stokk": {
     "_doc": "Takseringstall Setesdalen 2026 (NJFF Aust-Agder). Forventet støkk = sum over celler i sveipet av tetthet_cell * areal * oppdagelsesandel, der tetthet_cell = tetthet_fugl_per_km2 * score / middelscore_jaktfelt.",
     "tetthet_fugl_per_km2": 8.5,
@@ -119,12 +113,14 @@
   },
   "standard_per_art": {
     "_doc": [
-      "Standard start og slutt per art når dagen står på 'auto'. 'samme' betyr slutt = start. gjennomgang = start og slutt er ulike steder, da må bilen stå ved sluttpunktet.",
+      "Standard start og slutt per art når dagen står på 'auto'. 'samme' betyr slutt = start. gjennomgang = start og slutt er ulike steder.",
+      "Er avstanden mellom start og slutt over to_biler_over_m, trengs to biler; ellers må bilen stå ved sluttpunktet.",
       "snu_ved_vind_fra: [fra, til] grader. Hvis morgenvinden (første tre felttimer) i vindpunkt kommer fra denne sektoren, byttes start og slutt."
     ],
+    "to_biler_over_m": 2000,
     "storfugl": {
       "start": "mele",
-      "slutt": "troddebakken",
+      "slutt": "enden-av-vegen",
       "sloyfe": false,
       "vindpunkt": "fjord",
       "snu_ved_vind_fra": [
@@ -133,19 +129,58 @@
       ]
     },
     "lirype": {
-      "start": "hukebu",
+      "start": "troddebakken",
       "slutt": "samme",
-      "sloyfe": true
+      "sloyfe": false
     },
     "orrfugl": {
-      "start": "hukebu",
+      "start": "troddebakken",
       "slutt": "samme",
-      "sloyfe": true
+      "sloyfe": false
     },
     "blandet": {
-      "start": "hukebu",
+      "start": "troddebakken",
       "slutt": "samme",
-      "sloyfe": true
+      "sloyfe": false
+    }
+  },
+  "standard_dager": {
+    "_doc": "Standard oppsett for nye brukere: rekkefølge av arter. Storfugl først fordi beltet langs lia da er urørt; rype og orrfugl unngår det siden gjennom rotasjonen.",
+    "arter": [
+      "storfugl",
+      "lirype",
+      "orrfugl"
+    ]
+  },
+  "observasjoner": {
+    "_doc": [
+      "Bonus fra observasjonsdatabasen (data/observasjoner.geojson) og den lokale jaktloggen, én mekanisme.",
+      "Celler innen radius_m av et punkt, eller inne i et polygon pluss polygon_buffer_m, får bonus_per_obs * vekt(alder) * antallsfaktor, summert over observasjoner og avkortet ved maks_bonus.",
+      "Bonusen legges til etter habitatmodellen (score = modell + observasjoner, maks 100) og vises separat i cellepopupen.",
+      "vekt etter alder i forhold til plandagen: 0–14 dager, 15–60 dager, samme måned tidligere år (±15 dager rundt årsdagen), ellers.",
+      "ukjent_honsefugl gir bonus til artene i ukjent_gjelder. antallsfaktor = min(1, antall / antall_for_full) (null antall regnes som 1)."
+    ],
+    "radius_m": 300,
+    "polygon_buffer_m": 150,
+    "bonus_per_obs": 8,
+    "maks_bonus": 20,
+    "antall_for_full": 2,
+    "vekt": {
+      "dager_0_14": 1.0,
+      "dager_15_60": 0.5,
+      "samme_maaned_tidligere_aar": 0.25,
+      "ellers": 0.1
+    },
+    "ukjent_gjelder": [
+      "lirype",
+      "orrfugl"
+    ],
+    "typevekt": {
+      "sett": 1.0,
+      "stokket": 1.0,
+      "felt": 1.0,
+      "spor": 0.6,
+      "omrade": 0.7
     }
   }
 }

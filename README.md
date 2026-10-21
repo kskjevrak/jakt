@@ -61,9 +61,41 @@ Endre `config/habitat.json`, øk `versjon`, kjør `scripts/build_scores.py` og `
 
 `scripts/refresh_artskart.py` henter funn av lirype, orrfugl og storfugl siste 15 år på nytt når som helst.
 
+## Observasjonsdatabasen
+
+`data/observasjoner.geojson` er sannheten for egne og andres fugleobservasjoner. Den er versjonert i git og leses av nettsiden. Dette er noe annet enn jaktloggen i nettleseren, som er lokal og privat (`logg/` er gitignored).
+
+Schema per feature:
+
+| Felt | Verdier |
+|---|---|
+| `id` | lages av scriptet, `o-ÅÅÅÅMMDD-nn` |
+| `dato` | ISO-dato |
+| `dato_usikker` | `true` når datoen er omtrentlig |
+| `art` | `lirype`, `orrfugl`, `storfugl`, `ukjent_honsefugl` |
+| `kjonn` | `tiur`, `roy`, `ukjent` |
+| `antall` | tall eller `null` |
+| `type` | `sett`, `stokket`, `felt`, `spor`, `omrade` |
+| `kilde` | navnet på den som så det |
+| `presisjon_m` | tall eller `null` |
+| `notat` | fritekst |
+| geometri | `Point` eller `Polygon` i WGS84 |
+
+Legg inn nye med `/obs <fritekst>` i Claude Code (strukturerer, viser tabell, commiter etter godkjenning) eller direkte:
+
+```
+.venv\Scripts\python.exe scripts\obs_add.py nye.geojson --tabell   # kontroller
+.venv\Scripts\python.exe scripts\obs_add.py nye.geojson            # legg inn, så commit
+.venv\Scripts\python.exe scripts\obs_add.py logg.geojson --fra-logg # promoter en eksportert jaktlogg
+```
+
+Nettsiden kan også laste ned loggen direkte i dette schemaet («Last ned som observasjoner»), så en logg promoteres med én kommando.
+
+I nettsiden vises databasen som laget «Observasjoner» (på som standard på stor skjerm, av på telefon): ikon per art i artsfarge med dekkevne etter alder, polygoner som tynt omriss. I planleggeren gir observasjonene bonus i cellene innen 300 m av et punkt eller inne i et polygon pluss 150 m, vektet etter alder i forhold til plandagen (0 til 14 dager 1,0, 15 til 60 dager 0,5, samme måned tidligere år 0,25, ellers 0,1). Ukjent hønsefugl gir bonus til rype og orrfugl. Bonusen legges til etter habitatmodellen, maks pluss 20, og vises for seg i cellepopupen («modell 62, observasjoner +12»). Loggregistreringene i nettleseren går gjennom samme mekanisme. Alle tall står i `config/route.json` under `observasjoner`.
+
 ## Nettsiden
 
-- Oppsettet (dato, dager, art, start, slutt og sløyfe per dag, form) lagres i nettleseren og i lenka, så det kan deles. `auto=1` i lenka får siden til å legge rutene selv.
+- Oppsettet (dato, dager, art, start, slutt og sløyfe per dag, form) lagres i nettleseren og i lenka, så det kan deles. `auto=1` i lenka får siden til å legge rutene selv. Standard er tre dager i rekkefølgen fra `config/route.json`: storfugl som gjennomgang Mele til Enden av vegen med to biler (snudd ved sørlig morgenvind ved fjorden), deretter rype og orrfugl som rundtur fra Troddebakken. Storfugl først fordi beltet langs lia da er urørt.
 - Ruter legges per dag innenfor km, høydemeter og timer fra `config/route.json`. Målfelt er de høyest scorede sammenhengende feltene for dagens art, gjennomgått i parallelle drag. Celler ruten har passert samme dag straffes slik at returen går en annen vei. Dager etter hverandre roterer med halveringstid. Overlapp og andel i gode celler vises per dag.
 - Loggen (Støkk, Felt) bruker GPS, lagres i nettleseren og lastes ned som GeoJSON. Registreringene gir bonus i cellene rundt for neste dags rute. Eksporterte logger i `logg/` brukes av `/briefing` og `/tune`.
 - Kjerneområder tegnes i kartet og lastes ned i formatet til `config/kjerner.geojson`. Legg filen i `config/` og commit, så gjelder den for alle.

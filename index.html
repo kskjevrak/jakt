@@ -371,7 +371,8 @@ const CFG = {};
 window.__jakt = { klar: false, ruterKlare: false };  // read by scripts/screenshot.py
 const state = {
   oppsett: null, dag: 1, art: 'lirype', sone: 'alle', tema: 'auto',
-  lag: { score: true, score10: false, dominant: false, ruter: true, besokt: true, kjerner: true, artskart: true, jaktfelt: true, nabo: true, vann: true, stier: true, myr: false, punkter: false, wmsAr5: false, wmsTreslag: false, wmsBonitet: false, wmsMatrikkel: false },
+  // 'obs' is on when planning on a big screen and off on a phone in the terrain
+  lag: { score: true, score10: false, dominant: false, ruter: true, besokt: true, obs: !matchMedia('(max-width: 899px)').matches, kjerner: true, artskart: true, jaktfelt: true, nabo: true, vann: true, stier: true, myr: false, punkter: false, wmsAr5: false, wmsTreslag: false, wmsBonitet: false, wmsMatrikkel: false },
   grid: null, gridKjerner: false, velgIKart: null,
 };
 let map, stedMarkers = [], startMarkers = [], gridLoaded = false;
@@ -388,8 +389,9 @@ const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(
 
 // ============================================================ oppsett
 function defaultOppsett() {
-  return { dato: today(), dager: 2, jegere: CFG.route.jegere.standard_antall, form: 'normal', start_tid: '08:00', timer: 7,
-           arter: ['lirype', 'blandet'], dagoppsett: [{ start: 'auto', slutt: 'auto', sloyfe: null }, { start: 'auto', slutt: 'auto', sloyfe: null }], egen: null };
+  const arter = (CFG.route.standard_dager && CFG.route.standard_dager.arter) || ['storfugl', 'lirype', 'orrfugl'];
+  return { dato: today(), dager: arter.length, jegere: CFG.route.jegere.standard_antall, form: 'normal', start_tid: '08:00', timer: 7,
+           arter: arter.slice(), dagoppsett: arter.map(() => ({ start: 'auto', slutt: 'auto', sloyfe: null })), egen: null };
 }
 function oppsettFraHash() {
   if (!location.hash.includes('=')) return null;
@@ -442,7 +444,13 @@ function planFor(d, o) {
   return { art, start, slutt, sloyfe: sloyfe && !gjennomgang, gjennomgang, begrunnelse, auto: (!dc.start || dc.start === 'auto') && (!dc.slutt || dc.slutt === 'auto') };
 }
 function navnPaa(id) { const p = punkt(id); return p ? p.navn.replace(/ \(\d+ moh\)$/, '') : id; }
-function opplegTekst(plan) { return plan.gjennomgang ? `Gjennomgang fra ${navnPaa(plan.start)} til ${navnPaa(plan.slutt)}. Bilen må stå ved ${navnPaa(plan.slutt)}.` : `${navnPaa(plan.start)} som start og slutt${plan.sloyfe ? ', sløyfe om bua med lunsj' : ''}.`; }
+function opplegTekst(plan) {
+  if (!plan.gjennomgang) return `${navnPaa(plan.start)} som start og slutt${plan.sloyfe ? ', sløyfe om bua med lunsj' : ''}.`;
+  const a = punkt(plan.start), b = punkt(plan.slutt); let avstand = 0;
+  if (a && b) { const [x1, y1] = toXY(a.lon, a.lat), [x2, y2] = toXY(b.lon, b.lat); avstand = Math.hypot(x1 - x2, y1 - y2); }
+  const toBiler = avstand > (CFG.route.standard_per_art.to_biler_over_m || 2000);
+  return `Gjennomgang fra ${navnPaa(plan.start)} til ${navnPaa(plan.slutt)}. ${toBiler ? `To biler: én ved ${navnPaa(plan.start)}, én ved ${navnPaa(plan.slutt)}.` : `Bilen må stå ved ${navnPaa(plan.slutt)}.`}`;
+}
 function lagreOppsett(o) { state.oppsett = normaliser(o); store.set(LS.oppsett, state.oppsett); state.dag = Math.min(state.dag, state.oppsett.dager); skrivHash(); tegnSlicer(); tegnPanel(); oppdaterStartMarkorer(); }
 
 function punktListe() {
@@ -526,7 +534,7 @@ $('#btn-nytt').addEventListener('click', () => apneOppsett(false));
 function artForDag() { const a = state.oppsett?.arter[state.dag - 1]; return a || 'blandet'; }
 function tegnSlicer() {
   const o = state.oppsett;
-  byggSeg($('#seg-dag'), Array.from({ length: o.dager }, (_, i) => [String(i + 1), `Dag ${i + 1}`]), String(state.dag), v => { state.dag = +v; state.art = artForDag(); tegnSlicer(); tegnPanel(); oppdaterScoreLag(); oppdaterRuteLag(true); skrivHash(); });
+  byggSeg($('#seg-dag'), Array.from({ length: o.dager }, (_, i) => [String(i + 1), `Dag ${i + 1}`]), String(state.dag), v => { state.dag = +v; state.art = artForDag(); oppdaterBonus(); oppdaterObsLag(); tegnSlicer(); tegnPanel(); oppdaterScoreLag(); oppdaterRuteLag(true); skrivHash(); });
   byggSeg($('#seg-art'), ['lirype', 'orrfugl', 'storfugl', 'blandet'].map(a => [a, ART_NAVN[a], a === 'blandet' ? cssVar('--ink-2') : cssVar('--' + a)]), state.art, v => { state.art = v; tegnPanel(); oppdaterScoreLag(); });
   byggSeg($('#seg-sone'), SONER.map(([v, l]) => [v, l]), state.sone, v => { state.sone = v; tegnPanel(); oppdaterScoreLag(); });
 }
@@ -567,7 +575,7 @@ function tegnLegend() {
 
 // ============================================================ grid og score
 function soneFilter() { const s = SONER.find(x => x[0] === state.sone)[2]; return s ? ['all', ['>=', ['get', 'h'], s[0]], ['<', ['get', 'h'], s[1]]] : null; }
-function scoreKey(a) { return state.gridKjerner ? `sk_${a}` : `sc_${a}`; }
+function scoreKey(a) { return `sk_${a}`; }  // effective score: model + kjerner + observations for the selected day
 function scoreStatistikk() {
   if (!state.grid) return null;
   const s = SONER.find(x => x[0] === state.sone)[2]; let ha = 0, sum = 0, n = 0;
@@ -604,18 +612,29 @@ function oppdaterScoreLag() {
 }
 function pip(pt, ring) { let inside = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [xi, yi] = ring[i], [xj, yj] = ring[j]; if (((yi > pt[1]) !== (yj > pt[1])) && (pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi)) inside = !inside; } return inside; }
 function brukKjerner(grid) {
-  const k = CFG.kjerner; const regel = CFG.habitat.kjerner; if (!k?.features?.length) return false;
+  // kjerner from local knowledge: kb_<art> = points added toward 100 (score + bonus * (100 - score))
+  const k = CFG.kjerner; const regel = CFG.habitat.kjerner;
   for (const f of grid.features) {
+    for (const a of ARTER) f.properties[`kb_${a}`] = 0;
+    if (!k || !k.features || !k.features.length) continue;
     const r = f.geometry.coordinates[0]; const c = [(r[0][0] + r[2][0]) / 2, (r[0][1] + r[2][1]) / 2];
     for (const kj of k.features) {
       const polys = kj.geometry.type === 'Polygon' ? [kj.geometry.coordinates] : kj.geometry.coordinates;
       if (!polys.some(p => pip(c, p[0]) && !p.slice(1).some(h => pip(c, h)))) continue;
       const bonus = Math.min(regel.maks_bonus, kj.properties.bonus ?? regel.standard_bonus);
-      for (const a of (kj.properties.arter || [])) { const v = f.properties[`sc_${a}`]; if (v != null) f.properties[`sk_${a}`] = Math.round(v + bonus * (100 - v)); }
+      for (const a of (kj.properties.arter || [])) { const v = f.properties[`sc_${a}`]; if (v != null) f.properties[`kb_${a}`] = Math.max(f.properties[`kb_${a}`], Math.round(bonus * (100 - v))); }
     }
-    for (const a of ARTER) if (f.properties[`sk_${a}`] == null) f.properties[`sk_${a}`] = f.properties[`sc_${a}`];
   }
-  return true;
+  return !!(k && k.features && k.features.length);
+}
+// effective score for the selected day: model + kjerner + observations (observation weight depends on the day)
+function oppdaterBonus() {
+  if (!state.grid) return; const dato = isoDate(addDays(state.oppsett.dato, state.dag - 1)); const items = obsItems();
+  for (const f of state.grid.features) {
+    const r = f.geometry.coordinates[0]; const [x, y] = toXY((r[0][0] + r[2][0]) / 2, (r[0][1] + r[2][1]) / 2);
+    for (const a of ARTER) { const m = f.properties[`sc_${a}`]; if (m == null) { f.properties[`sk_${a}`] = null; f.properties[`ob_${a}`] = 0; continue; } const ob = obsBonusXY(x, y, a, dato, items); f.properties[`ob_${a}`] = Math.round(ob); f.properties[`sk_${a}`] = Math.min(100, m + (f.properties[`kb_${a}`] || 0) + Math.round(ob)); }
+  }
+  if (map && map.getSource('grid')) map.getSource('grid').setData(state.grid);
 }
 async function lastGrid() {
   try {
@@ -623,7 +642,7 @@ async function lastGrid() {
     const g = await r.json();
     state.gridKjerner = brukKjerner(g);
     state.grid = g; gridLoaded = true;
-    map.getSource('grid').setData(g);
+    oppdaterBonus();
     GRAF = byggGraf(g, CFG.route); beregnMiddel(); gjenopprettRuter();
     oppdaterScoreLag(); oppdaterRuteLag(); tegnPanel();
     if (state.autoRuter && !Object.keys(RUTE.dager).length) { state.autoRuter = false; hentVaer().then(() => { lagRuter(1); window.__jakt.ruterKlare = true; }); } else window.__jakt.ruterKlare = true;
@@ -656,7 +675,7 @@ function byggStil(metas, F, mork, lag) {
     grid: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
     jaktfelt: { type: 'geojson', data: 'data/jaktfelt.geojson' }, teiger: { type: 'geojson', data: 'data/teiger.geojson' }, nabo: { type: 'geojson', data: 'data/naboteiger.geojson' },
     vann: { type: 'geojson', data: 'data/vann.geojson' }, bekker: { type: 'geojson', data: 'data/bekker.geojson' }, stier: { type: 'geojson', data: 'data/stier.geojson' }, myr: { type: 'geojson', data: 'data/myr_n50.geojson' },
-    artskart: { type: 'geojson', data: 'data/artskart.geojson' }, kjerner: { type: 'geojson', data: TOM_FC }, logg: { type: 'geojson', data: TOM_FC }, tegn: { type: 'geojson', data: TOM_FC },
+    artskart: { type: 'geojson', data: 'data/artskart.geojson' }, kjerner: { type: 'geojson', data: TOM_FC }, logg: { type: 'geojson', data: TOM_FC }, tegn: { type: 'geojson', data: TOM_FC }, obs: { type: 'geojson', data: TOM_FC },
     dominant10: { type: 'image', url: 'data/dominant.png', coordinates: metas.dominant.coordinates },
     besokt: { type: 'geojson', data: TOM_FC }, 'rute-andre': { type: 'geojson', data: TOM_FC }, 'rute-aktiv': { type: 'geojson', data: TOM_FC, lineMetrics: true }, spor: { type: 'geojson', data: TOM_FC },
   };
@@ -679,6 +698,8 @@ function byggStil(metas, F, mork, lag) {
     { id: 'teiger', type: 'line', source: 'teiger', layout: vis(lag.jaktfelt), paint: { 'line-color': '#8A9196', 'line-width': 1, 'line-dasharray': [2, 2] } },
     { id: 'jaktfelt-halo', type: 'line', source: 'jaktfelt', layout: Object.assign({ 'line-cap': 'round', 'line-join': 'round' }, vis(lag.jaktfelt)), paint: { 'line-color': '#FFFFFF', 'line-width': ['step', ['zoom'], 6, 13.01, 7] } },
     { id: 'jaktfelt', type: 'line', source: 'jaktfelt', layout: Object.assign({ 'line-cap': 'round', 'line-join': 'round' }, vis(lag.jaktfelt)), paint: { 'line-color': GRENSE, 'line-width': ['step', ['zoom'], 3, 13.01, 4] } },
+    { id: 'obs-fill', type: 'fill', source: 'obs', filter: ['==', ['geometry-type'], 'Polygon'], layout: vis(lag.obs), paint: { 'fill-color': obsFarge(F), 'fill-opacity': ['*', 0.1, ['get', 'op']] } },
+    { id: 'obs-line', type: 'line', source: 'obs', filter: ['==', ['geometry-type'], 'Polygon'], layout: vis(lag.obs), paint: { 'line-color': obsFarge(F), 'line-width': 1.5, 'line-opacity': ['get', 'op'] } },
     { id: 'kjerner-fill', type: 'fill', source: 'kjerner', layout: vis(lag.kjerner), paint: { 'fill-color': F.accent, 'fill-opacity': 0.12 } },
     { id: 'kjerner-line', type: 'line', source: 'kjerner', layout: vis(lag.kjerner), paint: { 'line-color': F.accent, 'line-width': 2, 'line-dasharray': [3, 2] } },
     { id: 'wms-matrikkel', type: 'raster', source: 'wms-matrikkel', layout: vis(lag.wmsMatrikkel), paint: { 'raster-opacity': 0.8 } },
@@ -694,9 +715,11 @@ function byggStil(metas, F, mork, lag) {
     { id: 'tegn-line', type: 'line', source: 'tegn', paint: { 'line-color': F.accent, 'line-width': 2, 'line-dasharray': [2, 1.5] } },
     { id: 'tegn-pkt', type: 'circle', source: 'tegn', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 6, 'circle-color': F.accent, 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } },
     { id: 'logg', type: 'symbol', source: 'logg', layout: { 'icon-image': ['concat', 'firkant-', ['get', 'art']], 'icon-size': 1, 'icon-allow-overlap': true, 'icon-ignore-placement': true } },
+    { id: 'obs-pkt', type: 'symbol', source: 'obs', filter: ['==', ['geometry-type'], 'Point'], layout: Object.assign({ 'icon-image': ['concat', 'obs-', ['get', 'art']], 'icon-size': 1, 'icon-allow-overlap': true, 'icon-ignore-placement': true }, vis(lag.obs)), paint: { 'icon-opacity': ['get', 'op'] } },
   ];
   return { version: 8, sources, layers };
 }
+function obsFarge(F) { return ['match', ['get', 'art'], 'lirype', F.lirype, 'orrfugl', F.orrfugl, 'storfugl', F.storfugl, F.ink2]; }
 const TOM_FC = { type: 'FeatureCollection', features: [] };
 const GRENSE = '#C2410C';  // jaktfeltgrensen: mørk oransje med hvit kant, lik i begge moduser så den leses på skog, snaufjell og vann
 function pilBilde(color) {
@@ -716,7 +739,15 @@ function sikreBilder() {
   const F = lesFarger();
   const sett = (id, img) => { if (map.hasImage(id)) map.updateImage(id, img); else map.addImage(id, img, { pixelRatio: 1 }); };
   sett('hatch', hatch(F.nabo)); sett('hatch-graa', hatch(cssVar('--visited'))); sett('pil', pilBilde(F.accent));
-  for (const a of ARTER) { sett('firkant-' + a, firkantBilde(F[a], false)); sett('firkant-' + a + '-felt', firkantBilde(F[a], true)); }
+  for (const a of ARTER) { sett('firkant-' + a, firkantBilde(F[a], false)); sett('firkant-' + a + '-felt', firkantBilde(F[a], true)); sett('obs-' + a, rombeBilde(F[a])); }
+  sett('obs-ukjent_honsefugl', rombeBilde(F.ink2));
+}
+function rombeBilde(color) {
+  // observation marker: a diamond in the species colour with white and dark rings, distinct from the log squares
+  const c = document.createElement('canvas'); c.width = c.height = 24; const x = c.getContext('2d');
+  const d = (r, fill, stroke, lw) => { x.beginPath(); x.moveTo(12, 12 - r); x.lineTo(12 + r, 12); x.lineTo(12, 12 + r); x.lineTo(12 - r, 12); x.closePath(); if (fill) { x.fillStyle = fill; x.fill(); } if (stroke) { x.strokeStyle = stroke; x.lineWidth = lw; x.stroke(); } };
+  d(10, '#FFFFFF', null, 0); d(8, color, '#1C2124', 1.5);
+  return x.getImageData(0, 0, 24, 24);
 }
 
 async function initKart() {
@@ -726,13 +757,15 @@ async function initKart() {
   map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: 'Funn: Artsdatabanken' }), 'bottom-right');
   map.addControl(new maplibregl.ScaleControl({ maxWidth: 140 }), 'bottom-right');
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
-  map.on('load', () => { brukTema(); lastGrid(); tegnStedMarkorer(); oppdaterStartMarkorer(); oppdaterKjernerLag(); oppdaterLoggLag(); });
+  map.on('load', () => { brukTema(); lastGrid(); tegnStedMarkorer(); oppdaterStartMarkorer(); oppdaterKjernerLag(); oppdaterLoggLag(); oppdaterObsLag(); });
   map.on('click', e => {
     if (TEGN.aktiv) { tegnKlikk(e.lngLat); return; }
     if (LOGGV.venterKlikk) { settLoggPos(e.lngLat.lat, e.lngLat.lng, null, 'kart'); LOGGV.venterKlikk = false; $('#logg-dialog').showModal(); return; }
     if (state.velgIKart) { const o = { ...state.oppsett, egen: { lat: e.lngLat.lat, lon: e.lngLat.lng } }; const rolle = state.velgIKart; state.velgIKart = null; lagreOppsett(o); toast(`${rolle === 'start' ? 'Startpunkt' : 'Sluttpunkt'} satt i kartet`); return; }
-    const f = map.queryRenderedFeatures(e.point, { layers: ['logg', 'artskart', 'score-grid'] })[0];
+    const f = map.queryRenderedFeatures(e.point, { layers: ['logg', 'obs-pkt', 'artskart', 'obs-fill', 'score-grid'] })[0];
     if (!f) { lukkPopup(); return; }
+    if (f.layer.id === 'obs-pkt' || f.layer.id === 'obs-fill') { const p = f.properties; const navn = { lirype: 'Rype', orrfugl: 'Orrfugl', storfugl: 'Storfugl', ukjent_honsefugl: 'Ukjent hønsefugl' }[p.art] || p.art; const typ = { sett: 'sett', stokket: 'støkket', felt: 'felt', spor: 'spor', omrade: 'område' }[p.type] || p.type;
+      visPopup(new maplibregl.Popup({ offset: 10, className: 'pop', maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(`<div class="pop"><h3>${navn}${p.kjonn && p.kjonn !== 'ukjent' ? `, ${p.kjonn}` : ''}, ${typ}</h3><p>${p.dato}${p.dato_usikker === true || p.dato_usikker === 'true' ? ' (dato usikker)' : ''}${p.antall ? `, ${p.antall} ${p.antall === 1 ? 'fugl' : 'fugler'}` : ''}${p.presisjon_m ? `, presisjon ${p.presisjon_m} m` : ''}<br>Kilde: ${p.kilde}${p.notat ? `<br>${p.notat}` : ''}</p><div class="celle">${p.id}, vekt i dag ${fmt.dec(p.vekt)}</div></div>`)); return; }
     if (f.layer.id === 'logg') { const p = f.properties; const pop = new maplibregl.Popup({ offset: 10, className: 'pop', maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(`<div class="pop"><h3>${p.type === 'felt' ? 'Felt' : 'Støkk'}, ${ART_NAVN[p.art] || p.art}</h3><p>${p.antall} ${p.antall === 1 ? 'fugl' : 'fugler'}, ${klokke(p.tid)} ${p.tid.slice(0, 10)}${p.noyaktighet_m ? `, GPS ±${fmt.int(p.noyaktighet_m)} m` : ''}${p.kilde === 'import' ? ', importert' : ''}<br>${p.notat || ''}</p><div class="actions"><button class="btn btn-small" data-slett="${p.id}">Slett</button></div></div>`); visPopup(pop); pop.getElement().querySelector('[data-slett]').addEventListener('click', () => { slettLogg(p.id); pop.remove(); }); return; }
     if (f.layer.id === 'artskart') { const p = f.properties; visPopup(new maplibregl.Popup({ offset: 10, className: 'pop', maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(`<div class="pop"><h3>${ART_NAVN[p.art] || p.art}</h3><p>${p.dato || ''}${p.antall ? `, ${p.antall} individ` : ''}. Presisjon ${p.presisjon_m ?? '?'} m.<br>${p.kilde || ''}</p></div>`)); return; }
     visPopup(new maplibregl.Popup({ offset: 6, className: 'pop', maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(cellePopupHtml(f.properties)));
@@ -755,8 +788,10 @@ const rund10 = v => (v == null ? null : Math.round(v / 10) * 10);
 function cellePopupHtml(p) {
   const tre = p.at === 30 ? (ORD.st[p.st] || ORD.tr[p.tr] || '') : '';
   const tittel = [`${fmt.int(p.h)} moh`, ORD.at[p.at] || 'ukjent', tre].filter(Boolean).join(', ');
-  const aktiv = state.art === 'blandet' ? ARTER.reduce((a, c) => ((p['sc_' + c] ?? -1) > (p['sc_' + a] ?? -1) ? c : a), 'lirype') : state.art;
-  const score = ARTER.map(a => { const v = p[scoreKey(a)]; const txt = `${ART_NAVN[a]} ${v == null ? '–' : fmt.int(v)}`; return a === aktiv ? `<b>${txt}</b>` : `<span>${txt}</span>`; }).join(', ');
+  const aktiv = state.art === 'blandet' ? ARTER.reduce((a, c) => ((p['sk_' + c] ?? -1) > (p['sk_' + a] ?? -1) ? c : a), 'lirype') : state.art;
+  const score = ARTER.map(a => { const v = p['sk_' + a], m = p['sc_' + a], kb = p['kb_' + a] || 0, ob = p['ob_' + a] || 0;
+    const deler = []; if (kb) deler.push(`kjerner +${fmt.int(kb)}`); if (ob) deler.push(`observasjoner +${fmt.int(ob)}`);
+    const txt = `${ART_NAVN[a]} ${v == null ? '–' : fmt.int(v)}${deler.length ? ` (modell ${fmt.int(m)}, ${deler.join(', ')})` : ''}`; return a === aktiv ? `<b>${txt}</b>` : `<span>${txt}</span>`; }).join('<br>');
   const asp = p.asp >= 0 ? `, ${kompass(rund10(p.asp))} ${rund10(p.asp) % 360}°` : '';
   const rader = [
     `${fmt.int(p.s)}° helning${asp}`,
@@ -795,11 +830,11 @@ function oppdaterStartMarkorer() {
 
 // ============================================================ lagvelger
 const LAGDEF = {
-  vaare: [['score', 'Habitatscore, 50 m-celler', null], ['score10', 'Score i 10 m (detaljbilde)', null], ['dominant', 'Dominerende art, 10 m', null], ['ruter', 'Andre dagers ruter', '--ink-2'], ['besokt', 'Sist besøkt, skravur', '--ink-2'], ['kjerner', 'Kjerneområder fra lokalkunnskap', '--accent'], ['artskart', 'Funn fra Artskart', '--orrfugl']],
+  vaare: [['score', 'Habitatscore, 50 m-celler', null], ['score10', 'Score i 10 m (detaljbilde)', null], ['dominant', 'Dominerende art, 10 m', null], ['ruter', 'Andre dagers ruter', '--ink-2'], ['besokt', 'Sist besøkt, skravur', '--ink-2'], ['obs', 'Observasjoner (data/observasjoner.geojson)', '--storfugl'], ['kjerner', 'Kjerneområder fra lokalkunnskap', '--accent'], ['artskart', 'Funn fra Artskart', '--orrfugl']],
   grunnlag: [['jaktfelt', 'Jaktfelt og teiger', '--ink'], ['nabo', 'Naboteiger, der vi ikke går', '--warn'], ['vann', 'Vann og bekker', '--water'], ['stier', 'Stier og veger', '--ink-2'], ['myr', 'Myr fra N50', '--mire'], ['punkter', 'Alle startpunkter, ikke bare dagens', '--ink']],
   sannhet: [['wmsAr5', 'NIBIO AR5 arealtype', null], ['wmsTreslag', 'NIBIO SR16 treslag', null], ['wmsBonitet', 'NIBIO SR16 bonitet', null], ['wmsMatrikkel', 'Kartverket matrikkelkart', null]],
 };
-const LAGKART = { score: ['score-grid'], ruter: ['rute-andre'], besokt: ['besokt'], kjerner: ['kjerner-fill', 'kjerner-line'], artskart: ['artskart'], jaktfelt: ['jaktfelt', 'jaktfelt-halo', 'teiger'], nabo: ['nabo-fill', 'nabo-line'], vann: ['vann', 'bekker'], stier: ['stier'], myr: ['myr'], wmsAr5: ['wms-ar5'], wmsTreslag: ['wms-treslag'], wmsBonitet: ['wms-bonitet'], wmsMatrikkel: ['wms-matrikkel'] };
+const LAGKART = { score: ['score-grid'], ruter: ['rute-andre'], besokt: ['besokt'], obs: ['obs-fill', 'obs-line', 'obs-pkt'], kjerner: ['kjerner-fill', 'kjerner-line'], artskart: ['artskart'], jaktfelt: ['jaktfelt', 'jaktfelt-halo', 'teiger'], nabo: ['nabo-fill', 'nabo-line'], vann: ['vann', 'bekker'], stier: ['stier'], myr: ['myr'], wmsAr5: ['wms-ar5'], wmsTreslag: ['wms-treslag'], wmsBonitet: ['wms-bonitet'], wmsMatrikkel: ['wms-matrikkel'] };
 function tegnLagvelger() {
   for (const [grp, liste] of Object.entries(LAGDEF)) {
     const box = $(`#lag-${grp === 'vaare' ? 'vaare' : grp}`); box.replaceChildren();
@@ -996,7 +1031,12 @@ function dijkstra(graf, src, mult) {
 function stiTil(D, target) { const out = []; for (let v = target; v !== -1; v = D.prev[v]) out.push(v); return out.reverse(); }
 function naermesteNode(graf, pt) { const [x, y] = toXY(pt.lon, pt.lat); let best = -1, bd = Infinity; for (let i = 0; i < graf.nodes.length; i++) { const n = graf.nodes[i]; if (!n.ok) continue; const d = Math.hypot(n.x - x, n.y - y); if (d < bd) { bd = d; best = i; } } return best; }
 function nodesWithin(graf, ix, r) { const n = graf.nodes[ix]; const out = []; const c = Math.ceil(r / 50); for (let di = -c; di <= c; di++) for (let dj = -c; dj <= c; dj++) { if (Math.hypot(di, dj) * 50 > r + 1) continue; const m = graf.idx.get((n.i + di) * 100000 + (n.j + dj)); if (m != null) out.push(m); } return out; }
-function scoreAv(n, art) { if (art === 'blandet') { let mx = -1; for (const a of ARTER) { const v = n.p[scoreKey(a)]; if (v != null && v > mx) mx = v; } return mx; } const v = n.p[scoreKey(art)]; return v == null ? -1 : v; }
+function scoreAv(n, art) {
+  // effective score for the planning day: model + kjerner + observations (weighted by age relative to PLAN_DATO)
+  const en = a => { const m = n.p['sc_' + a]; if (m == null) return -1; const ob = (typeof obsBonusXY === 'function' && PLAN_DATO) ? obsBonusXY(n.x, n.y, a, PLAN_DATO, OBS_CACHE) : 0; return Math.min(100, m + (n.p['kb_' + a] || 0) + ob); };
+  if (art === 'blandet') { let mx = -1; for (const a of ARTER) mx = Math.max(mx, en(a)); return mx; }
+  return en(art);
+}
 function rotasjon(k, dag, tidligere, cfgRot) { let f = 1; for (let d = 1; d < dag; d++) { const r = tidligere[d]; if (r && r.besokt && r.besokt[k]) f = Math.min(f, 1 - cfgRot.styrke * Math.pow(0.5, (dag - d) / cfgRot.halveringstid_dager)); } return f; }
 let HABITAT = null;  // set from config/habitat.json at boot; used for the elevation-zone gate on target fields
 function iHoydesone(n, art, cfg) {
@@ -1011,7 +1051,7 @@ function finnFelter(graf, art, dag, tidligere, cfg) {
     const n = graf.nodes[ix]; if (!n.ok) continue; const s = scoreAv(n, art); if (s < 0) continue; if (!iHoydesone(n, art, cfg)) continue;
     // cells inside an earlier day's corridor (rotasjon.radius_m) are not target cells; further out only the rotation penalty applies
     let gaatt = false; for (let d = 1; d < dag && !gaatt; d++) { const r = tidligere[d]; if (r && r.besokt && r.besokt[n.k]) gaatt = true; }
-    if (gaatt) continue; val[ix] = s * rotasjon(n.k, dag, tidligere, cfg.rotasjon) * (1 + (typeof loggBonus === 'function' ? loggBonus(n, art, PLAN_DATO) : 0)); alle.push(val[ix]);
+    if (gaatt) continue; val[ix] = s * rotasjon(n.k, dag, tidligere, cfg.rotasjon); alle.push(val[ix]);
   }
   // threshold: the red cores of the day, i.e. the upper quantile of today's scores, never below min_score_maal
   alle.sort((a, b) => a - b); const kv = alle.length ? alle[Math.min(alle.length - 1, Math.floor(alle.length * (cfg.rute.felt_kvantil || 0.75)))] : 0;
@@ -1180,7 +1220,7 @@ function ruteSignatur() { const o = state.oppsett; return JSON.stringify([o.dato
 function lagreRuter() { RUTE.sig = ruteSignatur(); store.set('jakt.ruter', { sig: RUTE.sig, dager: RUTE.dager }); }
 function gjenopprettRuter() { const s = store.get('jakt.ruter', null); if (s && s.sig === ruteSignatur()) { RUTE.dager = s.dager || {}; RUTE.sig = s.sig; } else { RUTE.dager = {}; RUTE.sig = null; } }
 function planMedOpplegg(d, o, plan, dato, vind) {
-  PLAN_DATO = dato;
+  PLAN_DATO = dato; OBS_CACHE = obsItems();
   const startPt = punkt(plan.start) || punkt('hukebu') || CFG.steder.steder[0]; const sluttPt = plan.gjennomgang ? punkt(plan.slutt) : null;
   const oo = { ...o, sloyfe: plan.sloyfe }; return planleggDag(d, oo, GRAF, RUTE.dager, CFG.route, CFG.steder.steder, startPt, sluttPt, vind, RUTE.middel);
 }
@@ -1280,7 +1320,7 @@ let LOGG = [];  // GeoJSON features: støkk og felt
 const LOGGV = { venterKlikk: false, type: 'stokk', pos: null };
 let PLAN_DATO = null;
 function lastLogg() { LOGG = store.get('jakt.logg', []); }
-function lagreLogg() { store.set('jakt.logg', LOGG); oppdaterLoggLag(); tegnLogg(); }
+function lagreLogg() { store.set('jakt.logg', LOGG); oppdaterLoggLag(); tegnLogg(); oppdaterBonus(); oppdaterScoreLag(); }
 function nyId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 function settLoggPos(lat, lon, noy, kilde) { LOGGV.pos = { lat, lon, noyaktighet_m: noy, kilde }; const e = $('#l-pos'); if (e) e.textContent = `${lat.toFixed(5)}, ${lon.toFixed(5)}${noy ? `, ±${fmt.int(noy)} m` : ''} (${kilde === 'gps' ? 'GPS' : kilde === 'kart' ? 'fra kartet' : 'kartets sentrum'})`; }
 function apneLogg(type) {
@@ -1329,8 +1369,11 @@ function tegnLogg() {
   }
   if (sortert.length > 12) frag.append(el('div', { class: 'small' }, `${sortert.length - 12} eldre registreringer vises i kartet.`));
   const lokale = lokaleKjerner();
+  const nObs = (CFG.obs && CFG.obs.features || []).length;
+  if (nObs) frag.append(el('div', { class: 'small', style: 'margin-top: var(--s-2)' }, `Observasjonsdatabasen har ${nObs} oppføringer og gir bonus i cellene rundt, vektet etter alder. Loggen her gir samme bonus til neste dags rute.`));
   frag.append(el('div', { class: 'actions-row' },
     el('button', { class: 'btn', onclick: eksporterLogg }, 'Last ned logg (GeoJSON)'),
+    el('button', { class: 'btn', onclick: loggSomObservasjoner }, 'Last ned som observasjoner'),
     el('button', { class: 'btn', onclick: () => $('#logg-fil').click() }, 'Importer logg'),
     el('button', { class: 'btn', onclick: startTegning }, 'Tegn kjerneområde'),
     ...(lokale.length ? [el('button', { class: 'btn', onclick: eksporterKjerner }, `Last ned kjerner.geojson (${lokale.length} nye)`)] : [])));
@@ -1344,12 +1387,51 @@ $('#logg-fil').addEventListener('change', async e => {
     lagreLogg(); toast(`${n} registreringer importert`); } catch (err) { toast('Kunne ikke lese filen som GeoJSON'); }
   e.target.value = '';
 });
-function loggBonus(n, art, dato) {
-  const L = CFG.route && CFG.route.logg; if (!L || !LOGG.length || !dato) return 0;
-  const [x, y] = [n.x, n.y]; let b = 0; const d0 = new Date(dato + 'T12:00:00');
-  for (const f of LOGG) { const p = f.properties; if (art !== 'blandet' && p.art !== art) continue; const [lon, lat] = f.geometry.coordinates; const [fx, fy] = toXY(lon, lat); if (Math.hypot(fx - x, fy - y) > L.radius_m) continue;
-    const dager = Math.max(0, (d0 - new Date(p.tid)) / 86400000); b += L.bonus * Math.pow(0.5, dager / L.halveringstid_dager) * Math.min(1, (p.antall || 1) / 2); }
-  return Math.min(b, L.bonus * 2);
+// ---- observasjoner: databasen i data/observasjoner.geojson pluss den lokale loggen, én bonusmekanisme
+let OBS_CACHE = null;
+function obsItems() {
+  // flatten database + log to items with metric geometry for fast bonus checks
+  const items = [];
+  const push = (p, geom) => {
+    if (!geom) return;
+    if (geom.type === 'Point') { const [x, y] = toXY(geom.coordinates[0], geom.coordinates[1]); items.push({ ...p, pkt: [x, y] }); }
+    else if (geom.type === 'Polygon' || geom.type === 'MultiPolygon') { const polys = geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates; const rings = polys.map(poly => poly[0].map(c => toXY(c[0], c[1]))); let bb = [Infinity, Infinity, -Infinity, -Infinity]; for (const r of rings) for (const [x, y] of r) bb = [Math.min(bb[0], x), Math.min(bb[1], y), Math.max(bb[2], x), Math.max(bb[3], y)]; items.push({ ...p, rings, bb }); }
+  };
+  for (const f of ((CFG.obs && CFG.obs.features) || [])) push({ art: f.properties.art, type: f.properties.type, dato: f.properties.dato, antall: f.properties.antall }, f.geometry);
+  for (const f of LOGG) push({ art: f.properties.art, type: f.properties.type === 'felt' ? 'felt' : 'stokket', dato: (f.properties.tid || '').slice(0, 10), antall: f.properties.antall }, f.geometry);
+  return items;
+}
+function obsVekt(datoObs, datoPlan, V) {
+  if (!datoObs) return V.ellers; const d0 = new Date(datoPlan + 'T12:00:00'), d1 = new Date(datoObs.slice(0, 10) + 'T12:00:00'); if (isNaN(d1)) return V.ellers;
+  const dager = Math.round((d0 - d1) / 86400000);
+  if (dager >= 0 && dager <= 14) return V.dager_0_14; if (dager > 14 && dager <= 60) return V.dager_15_60;
+  if (d1.getFullYear() < d0.getFullYear()) { const ann = new Date(d0.getFullYear(), d1.getMonth(), d1.getDate(), 12); if (Math.abs((d0 - ann) / 86400000) <= 15) return V.samme_maaned_tidligere_aar; }
+  return V.ellers;
+}
+function distTilRing(x, y, ring) { let best = Infinity; for (let i = 0; i < ring.length - 1; i++) { const [ax, ay] = ring[i], [bx, by] = ring[i + 1]; const dx = bx - ax, dy = by - ay; const L2 = dx * dx + dy * dy || 1; let t = ((x - ax) * dx + (y - ay) * dy) / L2; t = Math.max(0, Math.min(1, t)); best = Math.min(best, Math.hypot(x - (ax + t * dx), y - (ay + t * dy))); } return best; }
+function obsBonusXY(x, y, art, dato, items) {
+  const O = CFG.route && CFG.route.observasjoner; if (!O || !items || !items.length) return 0;
+  let sum = 0;
+  for (const it of items) {
+    if (art !== 'blandet') { if (it.art === 'ukjent_honsefugl') { if (!O.ukjent_gjelder.includes(art)) continue; } else if (it.art !== art) continue; }
+    let naer = false;
+    if (it.pkt) naer = Math.hypot(it.pkt[0] - x, it.pkt[1] - y) <= O.radius_m;
+    else if (x >= it.bb[0] - O.polygon_buffer_m && x <= it.bb[2] + O.polygon_buffer_m && y >= it.bb[1] - O.polygon_buffer_m && y <= it.bb[3] + O.polygon_buffer_m) naer = it.rings.some(r => pip([x, y], r) || distTilRing(x, y, r) <= O.polygon_buffer_m);
+    if (!naer) continue;
+    sum += O.bonus_per_obs * obsVekt(it.dato, dato, O.vekt) * (O.typevekt[it.type] != null ? O.typevekt[it.type] : 1) * Math.min(1, (it.antall || 1) / (O.antall_for_full || 2));
+  }
+  return Math.min(O.maks_bonus, sum);
+}
+function oppdaterObsLag() {
+  if (!map || !map.getSource('obs') || !CFG.obs) return; const dato = isoDate(addDays(state.oppsett.dato, state.dag - 1)); const V = CFG.route.observasjoner.vekt;
+  const feats = CFG.obs.features.map(f => { const v = obsVekt(f.properties.dato, dato, V); return { type: 'Feature', geometry: f.geometry, properties: { ...f.properties, vekt: v, op: Math.max(0.4, Math.min(1, v + 0.15)) } }; });
+  map.getSource('obs').setData({ type: 'FeatureCollection', features: feats });
+}
+function loggSomObservasjoner() {
+  const feats = LOGG.map(f => ({ type: 'Feature', geometry: f.geometry, properties: { id: null, dato: (f.properties.tid || '').slice(0, 10), dato_usikker: false, art: ARTER.includes(f.properties.art) ? f.properties.art : 'ukjent_honsefugl', kjonn: 'ukjent', antall: f.properties.antall, type: f.properties.type === 'felt' ? 'felt' : 'stokket', kilde: 'jaktlogg', presisjon_m: f.properties.noyaktighet_m || null, notat: f.properties.notat || '' } }));
+  if (!feats.length) { toast('Loggen er tom'); return; }
+  lastNed(`observasjoner-fra-logg-${state.oppsett.dato}.geojson`, JSON.stringify({ type: 'FeatureCollection', metadata: { _doc: 'Jaktlogg i observasjons-schema. Legg inn med: python scripts/obs_add.py <fil>', eksportert: new Date().toISOString() }, features: feats }, null, 1), 'application/geo+json');
+  toast('Lastet ned i observasjons-schema. Legg inn med scripts/obs_add.py.');
 }
 // ---- kjerneområder tegnet i felt
 const TEGN = { aktiv: false, pkt: [] };
@@ -1375,7 +1457,7 @@ $('#kjerne-form').addEventListener('submit', e => {
   const bonus = Math.min(CFG.habitat.kjerner.maks_bonus, Math.max(0.05, +f.bonus.value || CFG.habitat.kjerner.standard_bonus));
   const feat = { type: 'Feature', properties: { navn: f.navn.value.trim(), arter, bonus, kilde: 'jaktlogg', dato: isoDate(new Date()), notat: f.notat.value.trim() }, geometry: { type: 'Polygon', coordinates: [[...TEGN.pkt, TEGN.pkt[0]]] } };
   const lok = lokaleKjerner(); lok.push(feat); store.set('jakt.kjerner', lok); avsluttTegning(); oppdaterKjernerLag();
-  if (state.grid) { CFG.kjerner = alleKjerner(); state.gridKjerner = brukKjerner(state.grid); map.getSource('grid').setData(state.grid); oppdaterScoreLag(); }
+  if (state.grid) { CFG.kjerner = alleKjerner(); state.gridKjerner = brukKjerner(state.grid); oppdaterBonus(); oppdaterScoreLag(); }
   tegnLogg(); tegnPanel(); toast(`Kjerneområdet «${feat.properties.navn}» er lagret og gir bonus i cellene. Last ned kjerner.geojson for å legge det i repoet.`);
 });
 function eksporterKjerner() { lastNed('kjerner.geojson', JSON.stringify({ type: 'FeatureCollection', metadata: { _doc: 'Kjerneområder fra lokalkunnskap. Format: se kjerner i config/habitat.json. Erstatt config/kjerner.geojson med denne filen.', eksportert: new Date().toISOString() }, features: alleKjerner().features }, null, 1), 'application/geo+json'); toast('kjerner.geojson lastet ned, legg den i config/ og commit'); }
@@ -1409,8 +1491,8 @@ function lastNedPng() { try { map.once('idle', () => lastNed(`jakt-bygland-${sta
 
 // ============================================================ boot
 async function boot() {
-  const [habitat, route, start, steder, kjerner] = await Promise.all(['config/habitat.json', 'config/route.json', 'config/start.json', 'config/steder.json', 'config/kjerner.geojson'].map(u => fetch(u).then(r => r.json())));
-  Object.assign(CFG, { habitat, route, start, steder, kjerner }); HABITAT = habitat;
+  const [habitat, route, start, steder, kjerner, obs] = await Promise.all(['config/habitat.json', 'config/route.json', 'config/start.json', 'config/steder.json', 'config/kjerner.geojson', 'data/observasjoner.geojson'].map(u => fetch(u).then(r => r.ok ? r.json() : null).catch(() => null)));
+  Object.assign(CFG, { habitat, route, start, steder, kjerner, obs: obs || TOM_FC }); HABITAT = habitat;
   CFG.kjerner = alleKjerner(); lastLogg(); tegnLogg();
   state.tema = store.get(LS.tema, 'auto'); Object.assign(state.lag, store.get(LS.lag, {}));
   brukTema();

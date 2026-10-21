@@ -1,0 +1,240 @@
+{
+ "type": "FeatureCollection",
+ "metadata": {
+  "_doc": [
+   "Observasjonsdatabase. Sannhet for fugleobservasjoner i og rundt jaktfeltet, versjonert i git og lest av nettsiden.",
+   "Schema per feature: id, dato (ISO), dato_usikker (bool), art (lirype|orrfugl|storfugl|ukjent_honsefugl), kjonn (tiur|roy|ukjent), antall (tall eller null),",
+   "type (sett|stokket|felt|spor|omrade), kilde (navn), presisjon_m (tall eller null), notat. Geometri: Point eller Polygon i WGS84.",
+   "Legg inn nye med /obs i Claude Code eller scripts/obs_add.py. Loggen i nettsiden er lokal og noe annet; den kan promoteres hit med 'Last ned som observasjoner' + obs_add.py."
+  ],
+  "schema_versjon": 1
+ },
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "id": "o-20261017-01",
+    "dato": "2026-10-17",
+    "dato_usikker": true,
+    "art": "storfugl",
+    "kjonn": "tiur",
+    "antall": 1,
+    "type": "sett",
+    "kilde": "medjeger",
+    "presisjon_m": 50,
+    "notat": "på veien, flata øst for punktet og lia vest nordvest mot Nånes gard er aktuell"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     7.802341,
+     58.783159
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "id": "o-20261017-02",
+    "dato": "2026-10-17",
+    "dato_usikker": true,
+    "art": "storfugl",
+    "kjonn": "ukjent",
+    "antall": null,
+    "type": "omrade",
+    "kilde": "medjeger",
+    "presisjon_m": null,
+    "notat": "lia fra observasjonspunktet vest-nordvest mot Nånes gard, aktuell for storfugl"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       7.788446,
+       58.783573
+      ],
+      [
+       7.790177,
+       58.786672
+      ],
+      [
+       7.803207,
+       58.784709
+      ],
+      [
+       7.801474,
+       58.78161
+      ],
+      [
+       7.788446,
+       58.783573
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "id": "o-20261017-03",
+    "dato": "2026-10-17",
+    "dato_usikker": true,
+    "art": "ukjent_honsefugl",
+    "kjonn": "ukjent",
+    "antall": 1,
+    "type": "sett",
+    "kilde": "medjeger",
+    "presisjon_m": 100,
+    "notat": "ukjent hønsefugl i nordvendt slukt"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     7.73004,
+     58.793625
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "id": "o-20261017-04",
+    "dato": "2026-10-17",
+    "dato_usikker": true,
+    "art": "ukjent_honsefugl",
+    "kjonn": "ukjent",
+    "antall": null,
+    "type": "omrade",
+    "kilde": "medjeger",
+    "presisjon_m": null,
+    "notat": "generelt bra med fugl: nordøstvendt li på vår side av Hakefjell, fra myra ved teiggrensa i sør og opp til eiendomsgrensen på toppen"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       7.646935,
+       58.791717
+      ],
+      [
+       7.680298,
+       58.76825
+      ],
+      [
+       7.666994,
+       58.76103
+      ],
+      [
+       7.665548,
+       58.767906
+      ],
+      [
+       7.664208,
+       58.768544
+      ],
+      [
+       7.665173,
+       58.768679
+      ],
+      [
+       7.665295,
+       58.768752
+      ],
+      [
+       7.663964,
+       58.76866
+      ],
+      [
+       7.662161,
+       58.769517
+      ],
+      [
+       7.662131,
+       58.77003
+      ],
+      [
+       7.661012,
+       58.770075
+      ],
+      [
+       7.643243,
+       58.778578
+      ],
+      [
+       7.639517,
+       58.78164
+      ],
+      [
+       7.640135,
+       58.781712
+      ],
+      [
+       7.639335,
+       58.781792
+      ],
+      [
+       7.633744,
+       58.786287
+      ],
+      [
+       7.633787,
+       58.787118
+      ],
+      [
+       7.633474,
+       58.786515
+      ],
+      [
+       7.631518,
+       58.788109
+      ],
+      [
+       7.631843,
+       58.788306
+      ],
+      [
+       7.631364,
+       58.788231
+      ],
+      [
+       7.630751,
+       58.788725
+      ],
+      [
+       7.639773,
+       58.789966
+      ],
+      [
+       7.646935,
+       58.791717
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "id": "o-20250915-01",
+    "dato": "2025-09-15",
+    "dato_usikker": true,
+    "art": "lirype",
+    "kjonn": "ukjent",
+    "antall": 2,
+    "type": "sett",
+    "kilde": "Knut",
+    "presisjon_m": null,
+    "notat": "to liryper sett medio september 2025. Én observasjon til fra samme tid mangler posisjon og er ikke lagt inn som eget punkt"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     7.72442,
+     58.784934
+    ]
+   }
+  }
+ ]
+}

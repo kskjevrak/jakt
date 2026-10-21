@@ -4,8 +4,8 @@
   python scripts/screenshot.py --navn dag3 --dag 3 --url http://127.0.0.1:8765/
   python scripts/screenshot.py --navn test --hash "dato=2026-10-22&dager=3&arter=lirype,orrfugl,storfugl&d1=troddebakken:samme:0&d2=troddebakken:samme:0&d3=auto:auto:&auto=1&dag=1"
 
-Standardoppsettet er tre dager fra dagens dato: rype og orrfugl fra Troddebakken, storfugl som artens standard
-(gjennomgang Mele–Troddebakken, snudd ved sørlig morgenvind). `auto=1` i hashen får siden til å legge rutene selv.
+Standardoppsettet er tre dager fra dagens dato i rekkefølgen fra config/route.json: storfugl gjennomgang
+Mele–Enden av vegen (snudd ved sørlig morgenvind), så rype og orrfugl fra Troddebakken. `auto=1` i hashen får siden til å legge rutene selv.
 Scriptet venter til window.__jakt.klar og window.__jakt.ruterKlare er sanne og kartet er ferdig tegnet,
 skriver eventuelle konsollfeil, og lagrer PNG til raw/preview/<navn>.png. Kan brukes som visuell regresjonstest.
 """
@@ -24,8 +24,9 @@ OUT = ROOT / "raw" / "preview"
 
 def standard_hash(dag: int, dato: str | None) -> str:
     d = dato or date.today().isoformat()
-    return (f"dato={d}&dager=3&jegere=2&form=normal&tid=08:00&timer=7&arter=lirype,orrfugl,storfugl"
-            f"&d1=troddebakken:samme:0&d2=troddebakken:samme:0&d3=auto:auto:&auto=1&dag={dag}")
+    # standard order from config/route.json standard_dager: storfugl through-route first, then rype and orrfugl from Troddebakken
+    return (f"dato={d}&dager=3&jegere=2&form=normal&tid=08:00&timer=7&arter=storfugl,lirype,orrfugl"
+            f"&d1=auto:auto:&d2=auto:auto:&d3=auto:auto:&auto=1&dag={dag}")
 
 
 def main() -> int:
