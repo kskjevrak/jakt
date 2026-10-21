@@ -81,6 +81,16 @@ def main() -> dict:
     for g in (teiger, nabo_gdf):
         g["areal_ha"] = (g.geometry.area / 10_000).round(1)
 
+    # keep the previous build stamp when the geometry is unchanged, so the weekly action only commits real changes
+    bygget = now_iso()
+    gammel = DATA / "jaktfelt.geojson"
+    if gammel.exists():
+        try:
+            g0 = gpd.read_file(gammel).to_crs("EPSG:25833")
+            if len(g0) and g0.geometry.iloc[0].buffer(0).symmetric_difference(jaktfelt).area < 1.0:
+                bygget = g0.iloc[0].get("bygget", bygget) or bygget
+        except Exception:  # noqa: BLE001
+            pass
     jf = gpd.GeoDataFrame(
         [{
             "navn": "Jaktfelt Bygland 49/1, 49/2, 49/3, 49/4, 50/1",
@@ -89,7 +99,7 @@ def main() -> dict:
             "antall_teiger": len(own) + len(feste),
             "antall_festeteiger": len(feste),
             "areal_ha": round(areal_ha, 1),
-            "bygget": now_iso(),
+            "bygget": bygget,
             "merknad": "; ".join(flagged) if flagged else "",
         }],
         geometry=[jaktfelt], crs="EPSG:25833",

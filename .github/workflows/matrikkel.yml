@@ -1,0 +1,38 @@
+name: Ukentlig matrikkelsjekk
+
+on:
+  schedule:
+    - cron: "23 4 * * 1"   # mandag 04:23 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: matrikkel
+  cancel-in-progress: false
+
+jobs:
+  teig:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet geopandas==1.2.0 shapely==2.2.0 pyproj==3.8.0 pyogrio==0.13.0 numpy==2.5.4 requests==2.34.2
+      - name: Hent teiger fra Kartverket WFS og bygg jaktfeltet
+        run: |
+          python scripts/fetch_teig.py > /dev/null
+          python scripts/build_jaktfelt.py > /dev/null
+      - name: Commit bare hvis geometrien er endret
+        run: |
+          git config user.name "jakt-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/jaktfelt.geojson data/teiger.geojson data/naboteiger.geojson data/aoi.geojson
+          if git diff --cached --quiet; then
+            echo "Ingen endring i teiger"
+          else
+            git commit -m "Oppdater jaktfelt fra Matrikkelen ($(date -u +%Y-%m-%d))"
+            git push
+          fi

@@ -7,6 +7,10 @@
 <meta name="theme-color" content="#EEF0EC" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#15181A" media="(prefers-color-scheme: dark)">
 <title>Fugledashboard Bygland</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="fonts/schibsted-grotesk.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.0/dist/maplibre-gl.css">
 <style>
@@ -17,7 +21,7 @@
   --accent: #E85D04; --accent-ink: #FFFFFF; --accent-soft: rgba(232,93,4,.14);
   --warn: #B42318; --ok: #2F6B3A; --water: #5C9BC2; --mire: #8A7A4E;
   --lirype: #B5651D; --orrfugl: #4B3F72; --storfugl: #1F5E3B;
-  --nabo: rgba(180,35,24,.55); --visited: rgba(28,33,36,.35); --focus: #1D6FA5;
+  --nabo: rgba(180,35,24,.44); --visited: rgba(28,33,36,.35); --focus: #1D6FA5;
   --halo: #FFFFFF;
   --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px;
   --r-control: 8px; --r-panel: 14px; --r-pill: 999px;
@@ -37,7 +41,7 @@
   --accent: #FF7A1A; --accent-ink: #1A1200; --accent-soft: rgba(255,122,26,.20);
   --warn: #FF6B5E; --ok: #7FC48A; --water: #6FA8CC; --mire: #A8976A;
   --lirype: #D98A4A; --orrfugl: #8E82BF; --storfugl: #5FA37E;
-  --nabo: rgba(255,107,94,.55); --visited: rgba(240,242,238,.35); --focus: #7CC0F0; --halo: #15181A;
+  --nabo: rgba(180,35,24,.44); --visited: rgba(240,242,238,.35); --focus: #7CC0F0; --halo: #15181A;
   color-scheme: dark;
 }
 @media (prefers-reduced-transparency: reduce) { :root { --panel: var(--panel-solid); --blur: none; } }
@@ -145,6 +149,14 @@ h2.sec { font: var(--t-body); font-weight: 700; margin: var(--s-5) 0 var(--s-1);
 .stokk { display: flex; gap: var(--s-4); flex-wrap: wrap; }
 .stokk div { min-width: 70px; }
 .stokk .num-l { display: block; }
+.logg-knapper { display: flex; gap: var(--s-2); align-items: center; padding: 0 var(--s-5) var(--s-3); }
+.logg-knapper .btn { flex: 1; font-weight: 700; }
+.logg-knapper .status { flex: none; }
+.logg-rad { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-2); padding: var(--s-2) 0; border-bottom: 1px solid var(--line); }
+.logg-rad .sq { display: inline-block; width: 10px; height: 10px; border: 1.5px solid var(--ink); margin-right: var(--s-2); vertical-align: 0; }
+.tegn { position: fixed; z-index: var(--z-toast); left: 50%; transform: translateX(-50%); top: calc(64px + env(safe-area-inset-top)); display: flex; gap: var(--s-2); align-items: center; background: var(--panel-solid); border: 1px solid var(--line); border-radius: var(--r-control); padding: var(--s-2) var(--s-3); }
+.tegn[hidden] { display: none; }
+@media (max-width: 899px) { :root { --sheet-peek: 156px; } }
 
 @media (min-width: 900px) {
   .panel { top: calc(64px + env(safe-area-inset-top)); left: var(--s-4); bottom: var(--s-4); width: min(var(--panel-w), 33vw); }
@@ -188,13 +200,14 @@ dialog[open] { animation: dlg var(--d-panel) var(--ease-out); }
 @media (max-width: 560px) { .dlg-body { grid-template-columns: 1fr; } }
 
 /* ---------- markers ---------- */
-.sted { width: var(--hit); height: var(--hit); display: grid; place-items: center; cursor: pointer; }
-.sted svg { width: 34px; height: 34px; filter: drop-shadow(0 1px 0 var(--halo)) drop-shadow(0 -1px 0 var(--halo)) drop-shadow(1px 0 0 var(--halo)) drop-shadow(-1px 0 0 var(--halo)); transition: transform var(--d-press) var(--ease-out); }
+/* markers keep a white ring in both modes so they read on forest, bare rock and water, like the boundary */
+.sted { width: var(--hit); height: var(--hit); display: grid; place-items: center; cursor: pointer; border-radius: 50%; background: rgba(255,255,255,.92); border: 2px solid #FFFFFF; box-shadow: 0 0 0 1px rgba(28,33,36,.25); }
+.sted svg { width: 30px; height: 30px; transition: transform var(--d-press) var(--ease-out); }
 .sted:active svg { transform: scale(.94); }
 .startpkt { width: 32px; height: 32px; display: grid; place-items: center; cursor: pointer; }
-.startpkt i { display: block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--ink); background: var(--halo); box-sizing: border-box; }
-.startpkt.valgt i { border-color: var(--accent); border-width: 3px; }
-.startpkt span { position: absolute; top: 28px; left: 50%; transform: translateX(-50%); white-space: nowrap; font: var(--t-small); font-weight: 700; color: var(--ink); text-shadow: 0 0 3px var(--halo), 0 0 3px var(--halo), 0 0 3px var(--halo); }
+.startpkt i { display: block; width: 16px; height: 16px; border-radius: 50%; border: 3px solid #1C2124; background: #FFFFFF; box-sizing: border-box; box-shadow: 0 0 0 2.5px #FFFFFF, 0 0 0 3.5px rgba(28,33,36,.25); }
+.startpkt.valgt i { border-color: var(--accent); }
+.startpkt span { position: absolute; top: 30px; left: 50%; transform: translateX(-50%); white-space: nowrap; font: var(--t-small); font-weight: 700; color: #1C2124; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff, 0 0 2px #fff; }
 
 /* ---------- toast ---------- */
 .toast { position: fixed; left: 50%; bottom: calc(var(--s-5) + env(safe-area-inset-bottom)); z-index: var(--z-toast); transform: translate(-50%, 0); background: var(--panel-solid); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r-control); padding: var(--s-3) var(--s-4); max-width: calc(100vw - 2 * var(--s-4)); transition: opacity var(--d-control) var(--ease-out), transform var(--d-control) var(--ease-out); }
@@ -233,16 +246,23 @@ dialog[open] { animation: dlg var(--d-panel) var(--ease-out); }
     </div>
     <p id="dag-under"></p>
   </div>
+  <div class="logg-knapper">
+    <button class="btn btn-primary" id="btn-stokk">Støkk</button>
+    <button class="btn" id="btn-felt">Felt</button>
+    <span class="status off" id="nett-status" title="Offline-status">Laster</span>
+  </div>
   <div class="panel-scroll" id="panel-scroll">
     <div class="swap" id="panel-innhold">
       <div class="row"><span class="k">Habitat over 60 for valgt art og sone</span></div>
       <div><span class="num" id="tall-ha">–<small>ha</small></span></div>
       <div class="legend" id="legend"></div>
       <div class="legend-labels" id="legend-labels"></div>
-      <h2 class="sec">Vær <span class="small" id="vaer-kilde"></span></h2>
-      <div id="vaer" class="swap"><div class="empty">Henter varsel fra MET.</div></div>
       <h2 class="sec">Rute</h2>
       <div id="rute" class="swap"></div>
+      <h2 class="sec">Vær <span class="small" id="vaer-kilde"></span></h2>
+      <div id="vaer" class="swap"><div class="empty">Henter varsel fra MET.</div></div>
+      <h2 class="sec">Logg</h2>
+      <div id="logg"></div>
       <h2 class="sec">Dagens oppsett</h2>
       <div id="oppsett-liste"></div>
       <div class="actions-row">
@@ -294,6 +314,49 @@ dialog[open] { animation: dlg var(--d-panel) var(--ease-out); }
   </form>
 </dialog>
 
+<dialog id="logg-dialog" aria-labelledby="logg-tittel">
+  <form method="dialog" id="logg-form">
+    <div class="dlg-head"><h1 id="logg-tittel">Støkk</h1><p id="logg-under">Registrer art, antall og posisjon. Lagres i nettleseren, kan lastes ned som GeoJSON.</p></div>
+    <div class="dlg-body">
+      <div class="field wide"><span class="field-title">Art</span><div class="seg art" id="l-art"></div></div>
+      <div class="field"><span class="field-title">Antall</span><div class="seg" id="l-antall"></div></div>
+      <label class="field"><span>Tid</span><input type="time" name="tid" step="60"></label>
+      <div class="field wide"><span class="field-title">Posisjon</span>
+        <div class="actions-row" style="margin-top:0">
+          <button type="button" class="btn" id="l-gps">Hent GPS</button>
+          <button type="button" class="btn" id="l-kart">Klikk i kartet</button>
+          <button type="button" class="btn btn-quiet" id="l-sentrum">Bruk kartets sentrum</button>
+        </div>
+        <p class="small" id="l-pos">Ingen posisjon ennå.</p>
+      </div>
+      <label class="field wide"><span>Notat</span><input type="text" name="notat" maxlength="140" placeholder="f.eks. to fugler lettet 30 m unna, mot vinden"></label>
+    </div>
+    <div class="dlg-foot"><button type="button" class="btn btn-quiet" id="l-avbryt">Avbryt</button><button type="submit" class="btn btn-primary" id="l-lagre">Lagre støkk</button></div>
+  </form>
+</dialog>
+<dialog id="kjerne-dialog" aria-labelledby="kjerne-tittel">
+  <form method="dialog" id="kjerne-form">
+    <div class="dlg-head"><h1 id="kjerne-tittel">Nytt kjerneområde</h1><p>Polygonet lagres i nettleseren og kan lastes ned i formatet til config/kjerner.geojson. Bonusen løfter score i cellene for valgte arter.</p></div>
+    <div class="dlg-body">
+      <label class="field wide"><span>Navn</span><input type="text" name="navn" required maxlength="60" placeholder="f.eks. Myrene øst for Bergebekken"></label>
+      <div class="field wide"><span class="field-title">Arter</span>
+        <label class="switch"><span>Rype</span><input type="checkbox" name="art" value="lirype"></label>
+        <label class="switch"><span>Orrfugl</span><input type="checkbox" name="art" value="orrfugl"></label>
+        <label class="switch"><span>Storfugl</span><input type="checkbox" name="art" value="storfugl"></label>
+      </div>
+      <label class="field"><span>Bonus</span><input type="number" name="bonus" min="0.05" max="0.5" step="0.05"></label>
+      <label class="field wide"><span>Notat</span><input type="text" name="notat" maxlength="140" placeholder="hva dere så, og når"></label>
+    </div>
+    <div class="dlg-foot"><button type="button" class="btn btn-quiet" id="k-avbryt">Avbryt</button><button type="submit" class="btn btn-primary">Lagre kjerneområde</button></div>
+  </form>
+</dialog>
+<div class="tegn" id="tegn" hidden>
+  <span id="tegn-info">Klikk hjørnene i kartet.</span>
+  <button class="btn btn-small" id="tegn-angre">Angre</button>
+  <button class="btn btn-small btn-primary" id="tegn-ferdig" disabled>Ferdig</button>
+  <button class="btn btn-small btn-quiet" id="tegn-avbryt">Avbryt</button>
+</div>
+<input type="file" id="logg-fil" accept=".geojson,.json,application/geo+json,application/json" hidden>
 <div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
@@ -593,7 +656,7 @@ function byggStil(metas, F, mork, lag) {
     grid: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
     jaktfelt: { type: 'geojson', data: 'data/jaktfelt.geojson' }, teiger: { type: 'geojson', data: 'data/teiger.geojson' }, nabo: { type: 'geojson', data: 'data/naboteiger.geojson' },
     vann: { type: 'geojson', data: 'data/vann.geojson' }, bekker: { type: 'geojson', data: 'data/bekker.geojson' }, stier: { type: 'geojson', data: 'data/stier.geojson' }, myr: { type: 'geojson', data: 'data/myr_n50.geojson' },
-    artskart: { type: 'geojson', data: 'data/artskart.geojson' }, kjerner: { type: 'geojson', data: 'config/kjerner.geojson' },
+    artskart: { type: 'geojson', data: 'data/artskart.geojson' }, kjerner: { type: 'geojson', data: TOM_FC }, logg: { type: 'geojson', data: TOM_FC }, tegn: { type: 'geojson', data: TOM_FC },
     dominant10: { type: 'image', url: 'data/dominant.png', coordinates: metas.dominant.coordinates },
     besokt: { type: 'geojson', data: TOM_FC }, 'rute-andre': { type: 'geojson', data: TOM_FC }, 'rute-aktiv': { type: 'geojson', data: TOM_FC, lineMetrics: true }, spor: { type: 'geojson', data: TOM_FC },
   };
@@ -613,8 +676,9 @@ function byggStil(metas, F, mork, lag) {
     { id: 'stier', type: 'line', source: 'stier', layout: vis(lag.stier), paint: { 'line-color': F.ink, 'line-width': ['match', ['get', 'typeveg'], 'enkelBilveg', 1.8, 1], 'line-dasharray': [2, 2], 'line-opacity': 0.7 } },
     { id: 'nabo-fill', type: 'fill', source: 'nabo', layout: vis(lag.nabo), paint: { 'fill-pattern': 'hatch' } },
     { id: 'nabo-line', type: 'line', source: 'nabo', layout: vis(lag.nabo), paint: { 'line-color': F.warn, 'line-width': 1 } },
-    { id: 'teiger', type: 'line', source: 'teiger', layout: vis(lag.jaktfelt), paint: { 'line-color': F.ink, 'line-width': 0.6, 'line-opacity': 0.5 } },
-    { id: 'jaktfelt', type: 'line', source: 'jaktfelt', layout: vis(lag.jaktfelt), paint: { 'line-color': F.ink, 'line-width': 2.5 } },
+    { id: 'teiger', type: 'line', source: 'teiger', layout: vis(lag.jaktfelt), paint: { 'line-color': '#8A9196', 'line-width': 1, 'line-dasharray': [2, 2] } },
+    { id: 'jaktfelt-halo', type: 'line', source: 'jaktfelt', layout: Object.assign({ 'line-cap': 'round', 'line-join': 'round' }, vis(lag.jaktfelt)), paint: { 'line-color': '#FFFFFF', 'line-width': ['step', ['zoom'], 6, 13.01, 7] } },
+    { id: 'jaktfelt', type: 'line', source: 'jaktfelt', layout: Object.assign({ 'line-cap': 'round', 'line-join': 'round' }, vis(lag.jaktfelt)), paint: { 'line-color': GRENSE, 'line-width': ['step', ['zoom'], 3, 13.01, 4] } },
     { id: 'kjerner-fill', type: 'fill', source: 'kjerner', layout: vis(lag.kjerner), paint: { 'fill-color': F.accent, 'fill-opacity': 0.12 } },
     { id: 'kjerner-line', type: 'line', source: 'kjerner', layout: vis(lag.kjerner), paint: { 'line-color': F.accent, 'line-width': 2, 'line-dasharray': [3, 2] } },
     { id: 'wms-matrikkel', type: 'raster', source: 'wms-matrikkel', layout: vis(lag.wmsMatrikkel), paint: { 'raster-opacity': 0.8 } },
@@ -626,34 +690,50 @@ function byggStil(metas, F, mork, lag) {
     { id: 'rute-halo', type: 'line', source: 'rute-aktiv', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': F.halo, 'line-width': 6.5 } },
     { id: 'rute-aktiv', type: 'line', source: 'rute-aktiv', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': F.accent, 'line-width': 4 } },
     { id: 'retning', type: 'symbol', source: 'rute-aktiv', layout: { 'symbol-placement': 'line', 'symbol-spacing': 110, 'icon-image': 'pil', 'icon-size': 0.55, 'icon-rotation-alignment': 'map', 'icon-allow-overlap': true, 'icon-ignore-placement': true } },
+    { id: 'tegn-fill', type: 'fill', source: 'tegn', paint: { 'fill-color': F.accent, 'fill-opacity': 0.15 } },
+    { id: 'tegn-line', type: 'line', source: 'tegn', paint: { 'line-color': F.accent, 'line-width': 2, 'line-dasharray': [2, 1.5] } },
+    { id: 'tegn-pkt', type: 'circle', source: 'tegn', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 6, 'circle-color': F.accent, 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } },
+    { id: 'logg', type: 'symbol', source: 'logg', layout: { 'icon-image': ['concat', 'firkant-', ['get', 'art']], 'icon-size': 1, 'icon-allow-overlap': true, 'icon-ignore-placement': true } },
   ];
   return { version: 8, sources, layers };
 }
 const TOM_FC = { type: 'FeatureCollection', features: [] };
+const GRENSE = '#C2410C';  // jaktfeltgrensen: mørk oransje med hvit kant, lik i begge moduser så den leses på skog, snaufjell og vann
 function pilBilde(color) {
   const c = document.createElement('canvas'); c.width = 32; c.height = 32; const x = c.getContext('2d');
   x.fillStyle = color; x.strokeStyle = cssVar('--halo'); x.lineWidth = 3; x.lineJoin = 'round';
   x.beginPath(); x.moveTo(6, 8); x.lineTo(26, 16); x.lineTo(6, 24); x.lineTo(11, 16); x.closePath(); x.stroke(); x.fill();
   return x.getImageData(0, 0, 32, 32);
 }
+function firkantBilde(color, felt) {
+  const c = document.createElement('canvas'); c.width = c.height = 20; const x = c.getContext('2d');
+  x.fillStyle = '#FFFFFF'; x.fillRect(2, 2, 16, 16); x.fillStyle = color; x.fillRect(4, 4, 12, 12);
+  x.strokeStyle = '#1C2124'; x.lineWidth = 2; x.strokeRect(3, 3, 14, 14);
+  if (felt) { x.strokeStyle = '#FFFFFF'; x.lineWidth = 2; x.beginPath(); x.moveTo(6, 10); x.lineTo(9, 13); x.lineTo(14, 7); x.stroke(); }
+  return x.getImageData(0, 0, 20, 20);
+}
 function sikreBilder() {
   const F = lesFarger();
   const sett = (id, img) => { if (map.hasImage(id)) map.updateImage(id, img); else map.addImage(id, img, { pixelRatio: 1 }); };
   sett('hatch', hatch(F.nabo)); sett('hatch-graa', hatch(cssVar('--visited'))); sett('pil', pilBilde(F.accent));
+  for (const a of ARTER) { sett('firkant-' + a, firkantBilde(F[a], false)); sett('firkant-' + a + '-felt', firkantBilde(F[a], true)); }
 }
 
 async function initKart() {
   const metas = {}; for (const a of [...ARTER, 'dominant']) metas[a] = await (await fetch(a === 'dominant' ? 'data/dominant.json' : `data/score_${a}.json`)).json();
   map = new maplibregl.Map({ container: 'map', style: byggStil(metas, lesFarger(), erMork(), state.lag), center: [7.72, 58.785], zoom: 12.3, minZoom: 9, maxZoom: 17, attributionControl: false, maxPitch: 0, preserveDrawingBuffer: true });
-  map.on('styleimagemissing', e => { if (['hatch', 'hatch-graa', 'pil'].includes(e.id) && !map.hasImage(e.id)) sikreBilder(); });
+  map.on('styleimagemissing', e => { if (!map.hasImage(e.id)) sikreBilder(); });
   map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: 'Funn: Artsdatabanken' }), 'bottom-right');
   map.addControl(new maplibregl.ScaleControl({ maxWidth: 140 }), 'bottom-right');
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
-  map.on('load', () => { brukTema(); lastGrid(); tegnStedMarkorer(); oppdaterStartMarkorer(); });
+  map.on('load', () => { brukTema(); lastGrid(); tegnStedMarkorer(); oppdaterStartMarkorer(); oppdaterKjernerLag(); oppdaterLoggLag(); });
   map.on('click', e => {
+    if (TEGN.aktiv) { tegnKlikk(e.lngLat); return; }
+    if (LOGGV.venterKlikk) { settLoggPos(e.lngLat.lat, e.lngLat.lng, null, 'kart'); LOGGV.venterKlikk = false; $('#logg-dialog').showModal(); return; }
     if (state.velgIKart) { const o = { ...state.oppsett, egen: { lat: e.lngLat.lat, lon: e.lngLat.lng } }; const rolle = state.velgIKart; state.velgIKart = null; lagreOppsett(o); toast(`${rolle === 'start' ? 'Startpunkt' : 'Sluttpunkt'} satt i kartet`); return; }
-    const f = map.queryRenderedFeatures(e.point, { layers: ['artskart', 'score-grid'] })[0];
+    const f = map.queryRenderedFeatures(e.point, { layers: ['logg', 'artskart', 'score-grid'] })[0];
     if (!f) { lukkPopup(); return; }
+    if (f.layer.id === 'logg') { const p = f.properties; const pop = new maplibregl.Popup({ offset: 10, className: 'pop', maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(`<div class="pop"><h3>${p.type === 'felt' ? 'Felt' : 'Støkk'}, ${ART_NAVN[p.art] || p.art}</h3><p>${p.antall} ${p.antall === 1 ? 'fugl' : 'fugler'}, ${klokke(p.tid)} ${p.tid.slice(0, 10)}${p.noyaktighet_m ? `, GPS ±${fmt.int(p.noyaktighet_m)} m` : ''}${p.kilde === 'import' ? ', importert' : ''}<br>${p.notat || ''}</p><div class="actions"><button class="btn btn-small" data-slett="${p.id}">Slett</button></div></div>`); visPopup(pop); pop.getElement().querySelector('[data-slett]').addEventListener('click', () => { slettLogg(p.id); pop.remove(); }); return; }
     if (f.layer.id === 'artskart') { const p = f.properties; visPopup(new maplibregl.Popup({ offset: 10, className: 'pop', maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(`<div class="pop"><h3>${ART_NAVN[p.art] || p.art}</h3><p>${p.dato || ''}${p.antall ? `, ${p.antall} individ` : ''}. Presisjon ${p.presisjon_m ?? '?'} m.<br>${p.kilde || ''}</p></div>`)); return; }
     visPopup(new maplibregl.Popup({ offset: 6, className: 'pop', maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(cellePopupHtml(f.properties)));
   });
@@ -719,7 +799,7 @@ const LAGDEF = {
   grunnlag: [['jaktfelt', 'Jaktfelt og teiger', '--ink'], ['nabo', 'Naboteiger, der vi ikke går', '--warn'], ['vann', 'Vann og bekker', '--water'], ['stier', 'Stier og veger', '--ink-2'], ['myr', 'Myr fra N50', '--mire'], ['punkter', 'Alle startpunkter, ikke bare dagens', '--ink']],
   sannhet: [['wmsAr5', 'NIBIO AR5 arealtype', null], ['wmsTreslag', 'NIBIO SR16 treslag', null], ['wmsBonitet', 'NIBIO SR16 bonitet', null], ['wmsMatrikkel', 'Kartverket matrikkelkart', null]],
 };
-const LAGKART = { score: ['score-grid'], ruter: ['rute-andre'], besokt: ['besokt'], kjerner: ['kjerner-fill', 'kjerner-line'], artskart: ['artskart'], jaktfelt: ['jaktfelt', 'teiger'], nabo: ['nabo-fill', 'nabo-line'], vann: ['vann', 'bekker'], stier: ['stier'], myr: ['myr'], wmsAr5: ['wms-ar5'], wmsTreslag: ['wms-treslag'], wmsBonitet: ['wms-bonitet'], wmsMatrikkel: ['wms-matrikkel'] };
+const LAGKART = { score: ['score-grid'], ruter: ['rute-andre'], besokt: ['besokt'], kjerner: ['kjerner-fill', 'kjerner-line'], artskart: ['artskart'], jaktfelt: ['jaktfelt', 'jaktfelt-halo', 'teiger'], nabo: ['nabo-fill', 'nabo-line'], vann: ['vann', 'bekker'], stier: ['stier'], myr: ['myr'], wmsAr5: ['wms-ar5'], wmsTreslag: ['wms-treslag'], wmsBonitet: ['wms-bonitet'], wmsMatrikkel: ['wms-matrikkel'] };
 function tegnLagvelger() {
   for (const [grp, liste] of Object.entries(LAGDEF)) {
     const box = $(`#lag-${grp === 'vaare' ? 'vaare' : grp}`); box.replaceChildren();
@@ -750,7 +830,7 @@ function brukTema() {
   // the topo map keeps its normal colours in both modes; dark mode only restyles panels, text and our own lines
   requestAnimationFrame(() => {
     const F = lesFarger();
-    const paints = { jaktfelt: ['line-color', F.ink], teiger: ['line-color', F.ink], stier: ['line-color', F.ink], 'nabo-line': ['line-color', F.warn], vann: ['fill-color', F.water], bekker: ['line-color', F.water], myr: ['fill-color', F.mire], 'kjerner-fill': ['fill-color', F.accent], 'kjerner-line': ['line-color', F.accent] };
+    const paints = { stier: ['line-color', F.ink], 'nabo-line': ['line-color', F.warn], vann: ['fill-color', F.water], bekker: ['line-color', F.water], myr: ['fill-color', F.mire], 'kjerner-fill': ['fill-color', F.accent], 'kjerner-line': ['line-color', F.accent] };
     for (const [id, [prop, val]] of Object.entries(paints)) map.setPaintProperty(id, prop, val);
     map.setPaintProperty('artskart', 'circle-stroke-color', F.halo);
     map.setPaintProperty('artskart', 'circle-color', artFarge(F));
@@ -931,7 +1011,7 @@ function finnFelter(graf, art, dag, tidligere, cfg) {
     const n = graf.nodes[ix]; if (!n.ok) continue; const s = scoreAv(n, art); if (s < 0) continue; if (!iHoydesone(n, art, cfg)) continue;
     // cells inside an earlier day's corridor (rotasjon.radius_m) are not target cells; further out only the rotation penalty applies
     let gaatt = false; for (let d = 1; d < dag && !gaatt; d++) { const r = tidligere[d]; if (r && r.besokt && r.besokt[n.k]) gaatt = true; }
-    if (gaatt) continue; val[ix] = s * rotasjon(n.k, dag, tidligere, cfg.rotasjon); alle.push(val[ix]);
+    if (gaatt) continue; val[ix] = s * rotasjon(n.k, dag, tidligere, cfg.rotasjon) * (1 + (typeof loggBonus === 'function' ? loggBonus(n, art, PLAN_DATO) : 0)); alle.push(val[ix]);
   }
   // threshold: the red cores of the day, i.e. the upper quantile of today's scores, never below min_score_maal
   alle.sort((a, b) => a - b); const kv = alle.length ? alle[Math.min(alle.length - 1, Math.floor(alle.length * (cfg.rute.felt_kvantil || 0.75)))] : 0;
@@ -1100,6 +1180,7 @@ function ruteSignatur() { const o = state.oppsett; return JSON.stringify([o.dato
 function lagreRuter() { RUTE.sig = ruteSignatur(); store.set('jakt.ruter', { sig: RUTE.sig, dager: RUTE.dager }); }
 function gjenopprettRuter() { const s = store.get('jakt.ruter', null); if (s && s.sig === ruteSignatur()) { RUTE.dager = s.dager || {}; RUTE.sig = s.sig; } else { RUTE.dager = {}; RUTE.sig = null; } }
 function planMedOpplegg(d, o, plan, dato, vind) {
+  PLAN_DATO = dato;
   const startPt = punkt(plan.start) || punkt('hukebu') || CFG.steder.steder[0]; const sluttPt = plan.gjennomgang ? punkt(plan.slutt) : null;
   const oo = { ...o, sloyfe: plan.sloyfe }; return planleggDag(d, oo, GRAF, RUTE.dager, CFG.route, CFG.steder.steder, startPt, sluttPt, vind, RUTE.middel);
 }
@@ -1194,6 +1275,118 @@ function tegnRute() {
   box.replaceChildren(frag);
 }
 
+// ============================================================ jaktlogg, kjerneområder og offline
+let LOGG = [];  // GeoJSON features: støkk og felt
+const LOGGV = { venterKlikk: false, type: 'stokk', pos: null };
+let PLAN_DATO = null;
+function lastLogg() { LOGG = store.get('jakt.logg', []); }
+function lagreLogg() { store.set('jakt.logg', LOGG); oppdaterLoggLag(); tegnLogg(); }
+function nyId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function settLoggPos(lat, lon, noy, kilde) { LOGGV.pos = { lat, lon, noyaktighet_m: noy, kilde }; const e = $('#l-pos'); if (e) e.textContent = `${lat.toFixed(5)}, ${lon.toFixed(5)}${noy ? `, ±${fmt.int(noy)} m` : ''} (${kilde === 'gps' ? 'GPS' : kilde === 'kart' ? 'fra kartet' : 'kartets sentrum'})`; }
+function apneLogg(type) {
+  LOGGV.type = type; LOGGV.pos = null; const f = $('#logg-form');
+  $('#logg-tittel').textContent = type === 'felt' ? 'Felt' : 'Støkk'; $('#l-lagre').textContent = type === 'felt' ? 'Lagre felt' : 'Lagre støkk';
+  const art = state.art === 'blandet' ? 'lirype' : state.art;
+  byggSeg($('#l-art'), ARTER.map(a => [a, ART_NAVN[a], cssVar('--' + a)]), art, () => {});
+  byggSeg($('#l-antall'), ['1', '2', '3', '4', '5', '6+'].map(n => [n, n]), '1', () => {});
+  const n = new Date(); f.tid.value = `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`; f.notat.value = '';
+  $('#l-pos').textContent = 'Ingen posisjon ennå. Hent GPS, klikk i kartet eller bruk kartets sentrum.';
+  $('#logg-dialog').showModal();
+  if (navigator.geolocation) hentGps();
+}
+function hentGps() {
+  if (!navigator.geolocation) { toast('Ingen GPS i denne nettleseren'); return; }
+  $('#l-pos').textContent = 'Henter GPS …';
+  navigator.geolocation.getCurrentPosition(p => settLoggPos(p.coords.latitude, p.coords.longitude, p.coords.accuracy, 'gps'),
+    err => { $('#l-pos').textContent = `GPS feilet (${err.message}). Klikk i kartet eller bruk kartets sentrum.`; }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
+}
+$('#btn-stokk').addEventListener('click', () => apneLogg('stokk'));
+$('#btn-felt').addEventListener('click', () => apneLogg('felt'));
+$('#l-gps').addEventListener('click', hentGps);
+$('#l-kart').addEventListener('click', () => { LOGGV.venterKlikk = true; $('#logg-dialog').close(); toast('Klikk i kartet der det skjedde'); });
+$('#l-sentrum').addEventListener('click', () => { const c = map.getCenter(); settLoggPos(c.lat, c.lng, null, 'sentrum'); });
+$('#l-avbryt').addEventListener('click', () => { LOGGV.venterKlikk = false; $('#logg-dialog').close(); });
+$('#logg-form').addEventListener('submit', e => {
+  const f = e.target; if (!LOGGV.pos) { e.preventDefault(); toast('Velg en posisjon først'); return; }
+  const dato = isoDate(addDays(state.oppsett.dato, state.dag - 1)); const tid = f.tid.value || '12:00';
+  const antallV = segVerdi($('#l-antall')); const antall = antallV === '6+' ? 6 : +antallV;
+  LOGG.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [+LOGGV.pos.lon.toFixed(6), +LOGGV.pos.lat.toFixed(6)] },
+    properties: { id: nyId(), type: LOGGV.type, art: segVerdi($('#l-art')), antall, tid: `${dato}T${tid}:00`, dag: state.dag, noyaktighet_m: LOGGV.pos.noyaktighet_m ? Math.round(LOGGV.pos.noyaktighet_m) : null, kilde: LOGGV.pos.kilde, notat: f.notat.value.trim(), registrert: new Date().toISOString() } });
+  lagreLogg(); toast(`${LOGGV.type === 'felt' ? 'Felt' : 'Støkk'} lagret. Neste dags rute tar hensyn til det.`);
+});
+function slettLogg(id) { LOGG = LOGG.filter(f => f.properties.id !== id); lagreLogg(); toast('Slettet'); }
+function oppdaterLoggLag() {
+  if (!map || !map.getSource('logg')) return;
+  map.getSource('logg').setData({ type: 'FeatureCollection', features: LOGG.map(f => ({ ...f, properties: { ...f.properties, art: f.properties.type === 'felt' ? f.properties.art + '-felt' : f.properties.art } })) });
+}
+function tegnLogg() {
+  const box = $('#logg'); if (!box) return; const frag = document.createDocumentFragment();
+  const sortert = LOGG.slice().sort((a, b) => (b.properties.tid || '').localeCompare(a.properties.tid || ''));
+  if (!sortert.length) frag.append(el('div', { class: 'empty' }, 'Ingen registreringer ennå. Trykk Støkk eller Felt når det skjer; posisjonen hentes fra GPS.'));
+  for (const f of sortert.slice(0, 12)) {
+    const p = f.properties; const sq = el('span', { class: 'sq' }); sq.style.background = cssVar('--' + (ARTER.includes(p.art) ? p.art : 'ink-2'));
+    frag.append(el('div', { class: 'logg-rad' }, el('span', {}, sq, `${p.type === 'felt' ? 'Felt' : 'Støkk'} ${ART_NAVN[p.art] ? ART_NAVN[p.art].toLowerCase() : p.art}, ${p.antall}`), el('span', { class: 'small' }, `${p.tid.slice(5, 10).split('-').reverse().join('.')} ${klokke(p.tid)}`)));
+  }
+  if (sortert.length > 12) frag.append(el('div', { class: 'small' }, `${sortert.length - 12} eldre registreringer vises i kartet.`));
+  const lokale = lokaleKjerner();
+  frag.append(el('div', { class: 'actions-row' },
+    el('button', { class: 'btn', onclick: eksporterLogg }, 'Last ned logg (GeoJSON)'),
+    el('button', { class: 'btn', onclick: () => $('#logg-fil').click() }, 'Importer logg'),
+    el('button', { class: 'btn', onclick: startTegning }, 'Tegn kjerneområde'),
+    ...(lokale.length ? [el('button', { class: 'btn', onclick: eksporterKjerner }, `Last ned kjerner.geojson (${lokale.length} nye)`)] : [])));
+  box.replaceChildren(frag);
+}
+function eksporterLogg() { if (!LOGG.length) { toast('Loggen er tom'); return; } lastNed(`jaktlogg-${state.oppsett.dato}.geojson`, JSON.stringify({ type: 'FeatureCollection', metadata: { eksportert: new Date().toISOString(), kilde: 'Fugledashboard Bygland' }, features: LOGG }, null, 1), 'application/geo+json'); toast('Logg lastet ned'); }
+$('#logg-fil').addEventListener('change', async e => {
+  const fil = e.target.files[0]; if (!fil) return;
+  try { const j = JSON.parse(await fil.text()); const feats = (j.features || []).filter(f => f.geometry && f.geometry.type === 'Point' && f.properties); const ids = new Set(LOGG.map(f => f.properties.id)); let n = 0;
+    for (const f of feats) { const p = { ...f.properties }; if (!p.id || ids.has(p.id)) { if (p.id && ids.has(p.id)) continue; p.id = nyId(); } p.kilde = p.kilde === 'gps' || p.kilde === 'kart' || p.kilde === 'sentrum' ? 'import' : (p.kilde || 'import'); if (!p.type) p.type = 'stokk'; if (!ARTER.includes(p.art)) p.art = 'lirype'; p.antall = +p.antall || 1; if (!p.tid) p.tid = new Date().toISOString(); LOGG.push({ type: 'Feature', geometry: f.geometry, properties: p }); n++; }
+    lagreLogg(); toast(`${n} registreringer importert`); } catch (err) { toast('Kunne ikke lese filen som GeoJSON'); }
+  e.target.value = '';
+});
+function loggBonus(n, art, dato) {
+  const L = CFG.route && CFG.route.logg; if (!L || !LOGG.length || !dato) return 0;
+  const [x, y] = [n.x, n.y]; let b = 0; const d0 = new Date(dato + 'T12:00:00');
+  for (const f of LOGG) { const p = f.properties; if (art !== 'blandet' && p.art !== art) continue; const [lon, lat] = f.geometry.coordinates; const [fx, fy] = toXY(lon, lat); if (Math.hypot(fx - x, fy - y) > L.radius_m) continue;
+    const dager = Math.max(0, (d0 - new Date(p.tid)) / 86400000); b += L.bonus * Math.pow(0.5, dager / L.halveringstid_dager) * Math.min(1, (p.antall || 1) / 2); }
+  return Math.min(b, L.bonus * 2);
+}
+// ---- kjerneområder tegnet i felt
+const TEGN = { aktiv: false, pkt: [] };
+function lokaleKjerner() { return store.get('jakt.kjerner', []); }
+function alleKjerner() { return { type: 'FeatureCollection', features: [...((CFG.kjerner && CFG.kjerner.features) || []), ...lokaleKjerner()] }; }
+function oppdaterKjernerLag() { if (map && map.getSource('kjerner')) map.getSource('kjerner').setData(alleKjerner()); }
+function startTegning() { TEGN.aktiv = true; TEGN.pkt = []; lukkPopup(); $('#tegn').hidden = false; oppdaterTegn(); toast('Klikk hjørnene i kartet, minst tre. Trykk Ferdig når polygonet er lukket.'); }
+function oppdaterTegn() {
+  const feats = TEGN.pkt.map(p => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: p } }));
+  if (TEGN.pkt.length >= 2) feats.push({ type: 'Feature', properties: {}, geometry: TEGN.pkt.length >= 3 ? { type: 'Polygon', coordinates: [[...TEGN.pkt, TEGN.pkt[0]]] } : { type: 'LineString', coordinates: TEGN.pkt } });
+  map.getSource('tegn').setData({ type: 'FeatureCollection', features: feats });
+  $('#tegn-info').textContent = `${TEGN.pkt.length} ${TEGN.pkt.length === 1 ? 'hjørne' : 'hjørner'}. ${TEGN.pkt.length < 3 ? 'Klikk flere.' : 'Klikk flere eller trykk Ferdig.'}`;
+  $('#tegn-ferdig').disabled = TEGN.pkt.length < 3;
+}
+function tegnKlikk(ll) { TEGN.pkt.push([+ll.lng.toFixed(6), +ll.lat.toFixed(6)]); oppdaterTegn(); }
+function avsluttTegning() { TEGN.aktiv = false; TEGN.pkt = []; $('#tegn').hidden = true; if (map.getSource('tegn')) map.getSource('tegn').setData(TOM_FC); }
+$('#tegn-angre').addEventListener('click', () => { TEGN.pkt.pop(); oppdaterTegn(); });
+$('#tegn-avbryt').addEventListener('click', avsluttTegning);
+$('#tegn-ferdig').addEventListener('click', () => { if (TEGN.pkt.length < 3) return; const f = $('#kjerne-form'); f.navn.value = ''; f.notat.value = ''; f.bonus.value = CFG.habitat.kjerner.standard_bonus; f.querySelectorAll('[name=art]').forEach(c => { c.checked = c.value === (state.art === 'blandet' ? 'lirype' : state.art); }); $('#kjerne-dialog').showModal(); });
+$('#k-avbryt').addEventListener('click', () => $('#kjerne-dialog').close());
+$('#kjerne-form').addEventListener('submit', e => {
+  const f = e.target; const arter = [...f.querySelectorAll('[name=art]:checked')].map(c => c.value); if (!arter.length) { e.preventDefault(); toast('Velg minst én art'); return; }
+  const bonus = Math.min(CFG.habitat.kjerner.maks_bonus, Math.max(0.05, +f.bonus.value || CFG.habitat.kjerner.standard_bonus));
+  const feat = { type: 'Feature', properties: { navn: f.navn.value.trim(), arter, bonus, kilde: 'jaktlogg', dato: isoDate(new Date()), notat: f.notat.value.trim() }, geometry: { type: 'Polygon', coordinates: [[...TEGN.pkt, TEGN.pkt[0]]] } };
+  const lok = lokaleKjerner(); lok.push(feat); store.set('jakt.kjerner', lok); avsluttTegning(); oppdaterKjernerLag();
+  if (state.grid) { CFG.kjerner = alleKjerner(); state.gridKjerner = brukKjerner(state.grid); map.getSource('grid').setData(state.grid); oppdaterScoreLag(); }
+  tegnLogg(); tegnPanel(); toast(`Kjerneområdet «${feat.properties.navn}» er lagret og gir bonus i cellene. Last ned kjerner.geojson for å legge det i repoet.`);
+});
+function eksporterKjerner() { lastNed('kjerner.geojson', JSON.stringify({ type: 'FeatureCollection', metadata: { _doc: 'Kjerneområder fra lokalkunnskap. Format: se kjerner i config/habitat.json. Erstatt config/kjerner.geojson med denne filen.', eksportert: new Date().toISOString() }, features: alleKjerner().features }, null, 1), 'application/geo+json'); toast('kjerner.geojson lastet ned, legg den i config/ og commit'); }
+// ---- offline
+function oppdaterNettStatus() {
+  const e = $('#nett-status'); if (!e) return; const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
+  if (!navigator.onLine) { e.textContent = 'Frakoblet'; e.className = 'status warn'; } else if (sw) { e.textContent = 'Offline-klar'; e.className = 'status'; } else { e.textContent = 'På nett'; e.className = 'status off'; }
+}
+window.addEventListener('online', oppdaterNettStatus); window.addEventListener('offline', oppdaterNettStatus);
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) { navigator.serviceWorker.register('sw.js').then(() => { oppdaterNettStatus(); navigator.serviceWorker.addEventListener('controllerchange', oppdaterNettStatus); }).catch(() => oppdaterNettStatus()); } else oppdaterNettStatus();
+
 // ============================================================ eksport
 function lastNed(filnavn, innhold, type) { const a = document.createElement('a'); a.href = typeof innhold === 'string' && innhold.startsWith('data:') ? innhold : URL.createObjectURL(new Blob([innhold], { type })); a.download = filnavn; document.body.append(a); a.click(); a.remove(); setTimeout(() => { if (a.href.startsWith('blob:')) URL.revokeObjectURL(a.href); }, 2000); }
 function xmlEsc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
@@ -1218,6 +1411,7 @@ function lastNedPng() { try { map.once('idle', () => lastNed(`jakt-bygland-${sta
 async function boot() {
   const [habitat, route, start, steder, kjerner] = await Promise.all(['config/habitat.json', 'config/route.json', 'config/start.json', 'config/steder.json', 'config/kjerner.geojson'].map(u => fetch(u).then(r => r.json())));
   Object.assign(CFG, { habitat, route, start, steder, kjerner }); HABITAT = habitat;
+  CFG.kjerner = alleKjerner(); lastLogg(); tegnLogg();
   state.tema = store.get(LS.tema, 'auto'); Object.assign(state.lag, store.get(LS.lag, {}));
   brukTema();
   const fraHash = oppsettFraHash();

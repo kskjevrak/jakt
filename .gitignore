@@ -22,3 +22,7 @@ skills-lock.json
 .claude/skills/*
 !.claude/skills/emil-design-eng/
 !.claude/skills/frontend-design/
+
+# eksporterte jaktlogger er private og holdes utenfor det offentlige repoet
+logg/*.geojson
+logg/briefing-*.md
