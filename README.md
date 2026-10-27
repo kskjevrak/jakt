@@ -50,7 +50,7 @@ python -m uv pip install --python .venv -r requirements.txt
 
 ### Habitatregler
 
-Endre `config/habitat.json`, øk `versjon`, kjør `scripts/build_scores.py` og `scripts/compare_scores.py`, og se på `raw/preview/score_<art>.png`. Nettsiden leser samme fil, så terskler og vekter i panelet følger med. Kommandoen `/tune` i Claude Code leser eksporterte jaktlogger og foreslår justeringer.
+Endre `config/habitat.json`, øk `versjon`, kjør `scripts/build_scores.py` og `scripts/compare_scores.py`, og se på `raw/preview/score_<art>.png`. Nettsiden leser samme fil, så terskler og vekter i panelet følger med. Kommandoen `/tune` i Claude Code leser eksporterte jaktlogger og punktene i observasjonsdatabasen og foreslår justeringer.
 
 ### Automatikk i GitHub Actions
 
@@ -73,7 +73,7 @@ Schema per feature:
 | `dato` | ISO-dato |
 | `dato_usikker` | `true` når datoen er omtrentlig |
 | `art` | `lirype`, `orrfugl`, `storfugl`, `ukjent_honsefugl` |
-| `kjonn` | `tiur`, `roy`, `ukjent` |
+| `kjonn` | `tiur`, `roy` (storfugl), `hann`, `hunn` (orrfugl og rype), `ukjent` |
 | `antall` | tall eller `null` |
 | `type` | `sett`, `stokket`, `felt`, `spor`, `omrade` |
 | `kilde` | navnet på den som så det |
@@ -111,7 +111,7 @@ I nettsiden vises databasen som laget «Observasjoner» (på som standard på st
 - Oppsettet (dato, dager, art, start, slutt og sløyfe per dag, form) lagres i nettleseren og i lenka, så det kan deles. `auto=1` i lenka får siden til å legge rutene selv. Standard er tre dager i rekkefølgen fra `config/route.json`: storfugl som gjennomgang Mele til Enden av vegen med to biler (snudd ved sørlig morgenvind ved fjorden), deretter rype og orrfugl som rundtur fra Troddebakken. Storfugl først fordi beltet langs lia da er urørt.
 - Ruter legges per dag innenfor km, høydemeter og timer fra `config/route.json`. Målfelt er de høyest scorede sammenhengende feltene for dagens art, gjennomgått i parallelle drag. Celler ruten har passert samme dag straffes slik at returen går en annen vei. Dager etter hverandre roterer med halveringstid. Overlapp og andel i gode celler vises per dag.
 - Loggen (Støkk, Felt) bruker GPS, lagres i nettleseren og lastes ned som GeoJSON. Registreringene gir bonus i cellene rundt for neste dags rute. Eksporterte logger i `logg/` brukes av `/briefing` og `/tune`.
-- Kjerneområder tegnes i kartet og lastes ned i formatet til `config/kjerner.geojson`. Legg filen i `config/` og commit, så gjelder den for alle. Positiv bonus løfter score i cellene (score + bonus × (100 − score)), negativ trekker ned (score + bonus × score, så −0,3 gjør 80 til 56); avkrysningen «Ingen fugl her» setter standardtrekket. I filen kan feltet hete `bonus` eller `bonus_faktor`; mangler tallet, trekker et notat med «ingen fugl» ned. Tom `arter`-liste betyr alle arter. Negative kjerner er grå i kartet, og cellepopupen viser «kjerner −12». Tallene står i `config/habitat.json` under `kjerner`, og `scripts/plan_cli.js` bruker kjernene på samme måte som nettsiden.
+- Kjerneområder tegnes i kartet og lastes ned i formatet til `config/kjerner.geojson`. Legg filen i `config/` og commit, så gjelder den for alle. Positiv bonus løfter score i cellene (score + bonus × (100 − score)), negativ trekker ned (score + bonus × score, så −0,3 gjør 80 til 56); avkrysningen «Ingen fugl her» setter standardtrekket. I filen kan feltet hete `bonus` eller `bonus_faktor`; mangler tallet, trekker et notat med «ingen fugl» ned. Tom `arter`-liste betyr alle arter. Negative kjerner er grå i kartet, og cellepopupen viser «kjerner −12». Tallene står i `config/habitat.json` under `kjerner`, og `scripts/plan_cli.js` bruker kjernene på samme måte som nettsiden. Celler som en kjerne løfter for arten slipper gjennom høydeporten i planleggeren (`krev_hoydesone`), så lokalkunnskap kan gi målfelt utenfor modellens høydesone.
 - Offline: service workeren cacher appen, konfig, datafiler, siste varsel og kartflisene du har sett. Statusmerket øverst i panelet viser «Offline-klar».
 
 ## Verktøy

@@ -5,6 +5,9 @@
 - Gåtte turer: `scripts/import_turer.py` leser GPX fra `logg/turer/` (Garmin Connect), forenkler og skriver `data/turer.geojson`. Laget «Gått» i kartet med popup. Loggdialogen har fått datofelt, og et klikk på sporet foreslår dato og klokkeslett derfra
 - Kjerneområder kan trekke ned: `bonus` eller `bonus_faktor` under 0, eller notat med «ingen fugl», gir score + faktor × score. Grå i kartet, «kjerner −12» i cellepopupen, avkrysning «Ingen fugl her» i tegnedialogen. `standard_trekk`, `maks_trekk` og `trekk_notat` i `config/habitat.json`. `scripts/plan_cli.js` bruker nå kjernene som nettsiden
 - Service worker v4 cacher også `data/turer.geojson` og `data/observasjoner.geojson`
+- Observasjonsschema: `kjonn` kan være `hann` eller `hunn` for orrfugl og rype. Første oppføring med spor-type fra felt: sitteplass orrfugl 25.10, og første kjerneområde i `config/kjerner.geojson` (150 m rundt sitteplassen, bonus 0,5)
+- Planleggeren lar celler som et kjerneområde løfter for arten slippe gjennom høydeporten (`krev_hoydesone`), så lokalkunnskap kan gi målfelt utenfor modellens høydesone
+- `/tune` og `scripts/tune_data.py` leser også punktene i `data/observasjoner.geojson`
 
 ## v1.0, 2026-10-21
 

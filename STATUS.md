@@ -20,4 +20,7 @@ Versjon: v1.1, 2026-10-27: gåtte GPS-spor og negativ bonus i kjerneområder. Ne
 - Mobiltesten er ikke gjort; strukturen (ark, slicer, GPS-logg) er på plass
 - Eksporterte logger, briefinger og rå GPX i `logg/` er gitignored fordi repoet er offentlig; det forenklede sporet i `data/turer.geojson` er derimot offentlig
 - Gåtte spor påvirker ikke rotasjonen i planleggeren ennå; bare planlagte ruter straffer celler neste dag
+
+## Til neste `/tune`
+- Orrfugl-sitteplass o-20261025-01 (25.10.2026) ligger på 773 moh i åpen fastmark i overgang lyng og bjørkekratt. Modellen gir orrfugl 23 der, og høydesonen i `config/habitat.json` slutter på 700–760 moh. Ett funn er ikke nok alene, men peker mot høyere øvre grense for orrfugl. Kjerneområdet «Sitteplass orrfugl» (150 m, bonus 0,5) dekker det inntil videre
 - Ingen nettleser i utviklingsmiljøet; verifisering skjer med `scripts/screenshot.py` (Playwright) og Node-kjøringer

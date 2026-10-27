@@ -1059,7 +1059,8 @@ let HABITAT = null;  // set from config/habitat.json at boot; used for the eleva
 function iHoydesone(n, art, cfg) {
   if (!cfg.rute.krev_hoydesone || !HABITAT) return true;
   const arter = art === 'blandet' ? ARTER : [art];
-  return arter.some(a => { const f = HABITAT.arter[a] && HABITAT.arter[a].faktorer.hoydesone; if (!f) return true; const p = f.punkter; return n.h >= p[0] + (p[1] - p[0]) * 0.25 && n.h <= p[3] - (p[3] - p[2]) * 0.25; });
+  // local knowledge beats the model: a cell a kjerne lifts for the species (kb > 0) passes the gate even outside the elevation zone
+  return arter.some(a => { if ((n.p['kb_' + a] || 0) > 0) return true; const f = HABITAT.arter[a] && HABITAT.arter[a].faktorer.hoydesone; if (!f) return true; const p = f.punkter; return n.h >= p[0] + (p[1] - p[0]) * 0.25 && n.h <= p[3] - (p[3] - p[2]) * 0.25; });
 }
 function finnFelter(graf, art, dag, tidligere, cfg) {
   // contiguous fields of cells scoring above the threshold for the day's species (after rotation penalty), inside its elevation zone

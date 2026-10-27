@@ -3,7 +3,7 @@
  "metadata": {
   "_doc": [
    "Observasjonsdatabase. Sannhet for fugleobservasjoner i og rundt jaktfeltet, versjonert i git og lest av nettsiden.",
-   "Schema per feature: id, dato (ISO), dato_usikker (bool), art (lirype|orrfugl|storfugl|ukjent_honsefugl), kjonn (tiur|roy|ukjent), antall (tall eller null),",
+   "Schema per feature: id, dato (ISO), dato_usikker (bool), art (lirype|orrfugl|storfugl|ukjent_honsefugl), kjonn (tiur|roy for storfugl, hann|hunn for orrfugl og lirype, ellers ukjent), antall (tall eller null),",
    "type (sett|stokket|felt|spor|omrade), kilde (navn), presisjon_m (tall eller null), notat. Geometri: Point eller Polygon i WGS84.",
    "Legg inn nye med /obs i Claude Code eller scripts/obs_add.py. Loggen i nettsiden er lokal og noe annet; den kan promoteres hit med 'Last ned som observasjoner' + obs_add.py."
   ],
@@ -233,6 +233,28 @@
     "coordinates": [
      7.72442,
      58.784934
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "id": "o-20261025-01",
+    "dato": "2026-10-25",
+    "dato_usikker": false,
+    "art": "orrfugl",
+    "kjonn": "hann",
+    "antall": null,
+    "type": "spor",
+    "kilde": "Knut",
+    "presisjon_m": 10,
+    "notat": "Sitteplass på lavkledd stein i overgang lyng og bjørkekratt. Fersk og eldre møkk i haug, mørke fjær uten hvitt, brukt gjentatt. Trolig hann."
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     7.7326968,
+     58.7924965
     ]
    }
   }

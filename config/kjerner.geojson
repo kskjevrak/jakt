@@ -1,7 +1,7 @@
 {
   "type": "FeatureCollection",
   "metadata": {
-    "_doc": "Kjerneområder fra lokalkunnskap. Tom til felt-eksport fra jaktloggen fyller den. Format: se 'kjerner' i config/habitat.json. bonus (eller bonus_faktor) over 0 løfter score, under 0 trekker ned. Uten tall: notat med «ingen fugl» trekker ned med standard_trekk.",
+    "_doc": "Kjerneområder fra lokalkunnskap. Format: se 'kjerner' i config/habitat.json. bonus (eller bonus_faktor) over 0 løfter score, under 0 trekker ned. Uten tall: notat med «ingen fugl» trekker ned med standard_trekk.",
     "eksempel": {
       "type": "Feature",
       "properties": {
@@ -81,5 +81,158 @@
       }
     }
   },
-  "features": []
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "navn": "Sitteplass orrfugl",
+        "arter": [
+          "orrfugl"
+        ],
+        "bonus": 0.5,
+        "kilde": "Knut",
+        "dato": "2026-10-25",
+        "notat": "sitteplass orrfugl"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              7.735297,
+              58.792496
+            ],
+            [
+              7.735247,
+              58.792761
+            ],
+            [
+              7.735099,
+              58.793016
+            ],
+            [
+              7.734859,
+              58.79325
+            ],
+            [
+              7.734536,
+              58.793456
+            ],
+            [
+              7.734142,
+              58.793624
+            ],
+            [
+              7.733692,
+              58.79375
+            ],
+            [
+              7.733204,
+              58.793827
+            ],
+            [
+              7.732697,
+              58.793853
+            ],
+            [
+              7.732189,
+              58.793827
+            ],
+            [
+              7.731702,
+              58.79375
+            ],
+            [
+              7.731252,
+              58.793624
+            ],
+            [
+              7.730858,
+              58.793456
+            ],
+            [
+              7.730534,
+              58.79325
+            ],
+            [
+              7.730294,
+              58.793016
+            ],
+            [
+              7.730146,
+              58.792761
+            ],
+            [
+              7.730096,
+              58.792496
+            ],
+            [
+              7.730146,
+              58.792232
+            ],
+            [
+              7.730294,
+              58.791977
+            ],
+            [
+              7.730534,
+              58.791743
+            ],
+            [
+              7.730858,
+              58.791537
+            ],
+            [
+              7.731252,
+              58.791369
+            ],
+            [
+              7.731702,
+              58.791243
+            ],
+            [
+              7.732189,
+              58.791166
+            ],
+            [
+              7.732697,
+              58.79114
+            ],
+            [
+              7.733204,
+              58.791166
+            ],
+            [
+              7.733692,
+              58.791243
+            ],
+            [
+              7.734142,
+              58.791369
+            ],
+            [
+              7.734536,
+              58.791537
+            ],
+            [
+              7.734859,
+              58.791743
+            ],
+            [
+              7.735099,
+              58.791977
+            ],
+            [
+              7.735247,
+              58.792232
+            ],
+            [
+              7.735297,
+              58.792496
+            ]
+          ]
+        ]
+      }
+    }
+  ]
 }

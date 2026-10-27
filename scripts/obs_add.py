@@ -5,7 +5,7 @@
   python scripts/obs_add.py logg.geojson --fra-logg # konverterer eksportert jaktlogg (type stokk/felt, tid) til schemaet først
 
 Schema per feature: id, dato (ISO), dato_usikker (bool), art (lirype|orrfugl|storfugl|ukjent_honsefugl),
-kjonn (tiur|roy|ukjent), antall (tall eller null), type (sett|stokket|felt|spor|omrade), kilde (navn),
+kjonn (tiur|roy|hann|hunn|ukjent), antall (tall eller null), type (sett|stokket|felt|spor|omrade), kilde (navn),
 presisjon_m (tall eller null), notat. Geometri Point eller Polygon i WGS84.
 Manglende id lages. Dubletter på id hoppes over. Rapporterer om punktet ligger innenfor jaktfeltet.
 """
@@ -19,7 +19,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DB = ROOT / "data" / "observasjoner.geojson"
 ARTER = {"lirype", "orrfugl", "storfugl", "ukjent_honsefugl"}
-KJONN = {"tiur", "roy", "ukjent"}
+KJONN = {"tiur", "roy", "hann", "hunn", "ukjent"}  # tiur/roy for storfugl, hann/hunn for orrfugl and lirype
 TYPER = {"sett", "stokket", "felt", "spor", "omrade"}
 
 

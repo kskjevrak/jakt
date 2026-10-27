@@ -1,6 +1,6 @@
-"""Koble jaktlogg (eksportert GeoJSON) til gridceller og sammenlign med habitatscore. Brukes av /tune.
+"""Koble jaktlogg (eksportert GeoJSON) og observasjonsdatabasen til gridceller og sammenlign med habitatscore. Brukes av /tune.
 
-  python scripts/tune_data.py [logg/*.geojson]
+  python scripts/tune_data.py [glob ...]        # standard: logg/*.geojson og data/observasjoner.geojson (bare punkter)
 
 For hver registrering: cellens score for arten, høyde, helning, arealtype, treslag, kronedekning, avstander.
 Oppsummerer per art: middelscore der fuglene faktisk var mot middelscore i jaktfeltet, og fordelingen
@@ -21,7 +21,7 @@ VARS = ["h", "s", "asp", "at", "tr", "bo", "gf", "st", "th", "kr", "dm", "dsm", 
 
 
 def main() -> int:
-    monster = sys.argv[1] if len(sys.argv) > 1 else str(ROOT / "logg" / "*.geojson")
+    monstre = sys.argv[1:] or [str(ROOT / "logg" / "*.geojson"), str(DATA / "observasjoner.geojson")]
     grid = json.loads((DATA / "grid.geojson").read_text(encoding="utf-8"))
     celler = []
     for f in grid["features"]:
@@ -38,11 +38,15 @@ def main() -> int:
         return best, math.sqrt(bd)
 
     obs = []
-    for fn in glob.glob(monster):
+    for fn in sorted({fn for m in monstre for fn in glob.glob(m)}):
         for f in json.loads(Path(fn).read_text(encoding="utf-8")).get("features", []):
-            p = f.get("properties", {}); lon, lat = f["geometry"]["coordinates"][:2]
+            p = f.get("properties", {}); g = f.get("geometry") or {}
+            if g.get("type") != "Point":
+                continue  # polygons (type omrade) are too coarse to pin to one cell
+            lon, lat = g["coordinates"][:2]
             c, d = naermeste(lon, lat)
-            obs.append({"art": p.get("art"), "type": p.get("type"), "antall": p.get("antall", 1), "tid": p.get("tid"), "avstand_celle_m": round(d), "celle": {k: c.get(k) for k in VARS}, "score": {a: c.get(f"sc_{a}") for a in ("lirype", "orrfugl", "storfugl")}})
+            obs.append({"art": p.get("art"), "type": p.get("type"), "kjonn": p.get("kjonn"), "antall": p.get("antall", 1), "tid": p.get("tid") or p.get("dato"), "kilde": p.get("kilde"), "fil": Path(fn).name,
+                        "avstand_celle_m": round(d), "celle": {k: c.get(k) for k in VARS}, "score": {a: c.get(f"sc_{a}") for a in ("lirype", "orrfugl", "storfugl")}})
     ut = {"antall_registreringer": len(obs), "per_art": {}}
     inne = [f["properties"] for f in grid["features"] if f["properties"].get("inn", 0) >= 0.5]
     for art in ("lirype", "orrfugl", "storfugl"):
