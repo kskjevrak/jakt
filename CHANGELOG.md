@@ -1,5 +1,11 @@
 # Endringslogg
 
+## v1.1, 2026-10-27
+
+- Gåtte turer: `scripts/import_turer.py` leser GPX fra `logg/turer/` (Garmin Connect), forenkler og skriver `data/turer.geojson`. Laget «Gått» i kartet med popup. Loggdialogen har fått datofelt, og et klikk på sporet foreslår dato og klokkeslett derfra
+- Kjerneområder kan trekke ned: `bonus` eller `bonus_faktor` under 0, eller notat med «ingen fugl», gir score + faktor × score. Grå i kartet, «kjerner −12» i cellepopupen, avkrysning «Ingen fugl her» i tegnedialogen. `standard_trekk`, `maks_trekk` og `trekk_notat` i `config/habitat.json`. `scripts/plan_cli.js` bruker nå kjernene som nettsiden
+- Service worker v4 cacher også `data/turer.geojson` og `data/observasjoner.geojson`
+
 ## v1.0, 2026-10-21
 
 Første frosne versjon av fugledashboardet for Bygland.

@@ -316,10 +316,11 @@ dialog[open] { animation: dlg var(--d-panel) var(--ease-out); }
 
 <dialog id="logg-dialog" aria-labelledby="logg-tittel">
   <form method="dialog" id="logg-form">
-    <div class="dlg-head"><h1 id="logg-tittel">Støkk</h1><p id="logg-under">Registrer art, antall og posisjon. Lagres i nettleseren, kan lastes ned som GeoJSON.</p></div>
+    <div class="dlg-head"><h1 id="logg-tittel">Støkk</h1><p id="logg-under">Registrer art, antall, tid og posisjon. Klikker du i kartet på et gått spor, foreslås dato og klokkeslett fra sporet. Lagres i nettleseren, kan lastes ned som GeoJSON.</p></div>
     <div class="dlg-body">
       <div class="field wide"><span class="field-title">Art</span><div class="seg art" id="l-art"></div></div>
       <div class="field"><span class="field-title">Antall</span><div class="seg" id="l-antall"></div></div>
+      <label class="field"><span>Dato</span><input type="date" name="dato"></label>
       <label class="field"><span>Tid</span><input type="time" name="tid" step="60"></label>
       <div class="field wide"><span class="field-title">Posisjon</span>
         <div class="actions-row" style="margin-top:0">
@@ -336,7 +337,7 @@ dialog[open] { animation: dlg var(--d-panel) var(--ease-out); }
 </dialog>
 <dialog id="kjerne-dialog" aria-labelledby="kjerne-tittel">
   <form method="dialog" id="kjerne-form">
-    <div class="dlg-head"><h1 id="kjerne-tittel">Nytt kjerneområde</h1><p>Polygonet lagres i nettleseren og kan lastes ned i formatet til config/kjerner.geojson. Bonusen løfter score i cellene for valgte arter.</p></div>
+    <div class="dlg-head"><h1 id="kjerne-tittel">Nytt kjerneområde</h1><p>Polygonet lagres i nettleseren og kan lastes ned i formatet til config/kjerner.geojson. Positiv bonus løfter score i cellene for valgte arter, negativ trekker ned, for eksempel der dere gikk uten å se fugl.</p></div>
     <div class="dlg-body">
       <label class="field wide"><span>Navn</span><input type="text" name="navn" required maxlength="60" placeholder="f.eks. Myrene øst for Bergebekken"></label>
       <div class="field wide"><span class="field-title">Arter</span>
@@ -344,7 +345,8 @@ dialog[open] { animation: dlg var(--d-panel) var(--ease-out); }
         <label class="switch"><span>Orrfugl</span><input type="checkbox" name="art" value="orrfugl"></label>
         <label class="switch"><span>Storfugl</span><input type="checkbox" name="art" value="storfugl"></label>
       </div>
-      <label class="field"><span>Bonus</span><input type="number" name="bonus" min="0.05" max="0.5" step="0.05"></label>
+      <label class="field"><span>Bonus, negativ trekker ned</span><input type="number" name="bonus" min="-0.8" max="0.5" step="0.05"></label>
+      <div class="field"><span class="field-title">Tomt område</span><label class="switch"><span>Ingen fugl her</span><input type="checkbox" name="tom"></label></div>
       <label class="field wide"><span>Notat</span><input type="text" name="notat" maxlength="140" placeholder="hva dere så, og når"></label>
     </div>
     <div class="dlg-foot"><button type="button" class="btn btn-quiet" id="k-avbryt">Avbryt</button><button type="submit" class="btn btn-primary">Lagre kjerneområde</button></div>
@@ -372,7 +374,7 @@ window.__jakt = { klar: false, ruterKlare: false };  // read by scripts/screensh
 const state = {
   oppsett: null, dag: 1, art: 'lirype', sone: 'alle', tema: 'auto',
   // 'obs' is on when planning on a big screen and off on a phone in the terrain
-  lag: { score: true, score10: false, dominant: false, ruter: true, besokt: true, obs: !matchMedia('(max-width: 899px)').matches, kjerner: true, artskart: true, jaktfelt: true, nabo: true, vann: true, stier: true, myr: false, punkter: false, wmsAr5: false, wmsTreslag: false, wmsBonitet: false, wmsMatrikkel: false },
+  lag: { score: true, score10: false, dominant: false, ruter: true, besokt: true, gatt: true, obs: !matchMedia('(max-width: 899px)').matches, kjerner: true, artskart: true, jaktfelt: true, nabo: true, vann: true, stier: true, myr: false, punkter: false, wmsAr5: false, wmsTreslag: false, wmsBonitet: false, wmsMatrikkel: false },
   grid: null, gridKjerner: false, velgIKart: null,
 };
 let map, stedMarkers = [], startMarkers = [], gridLoaded = false;
@@ -612,19 +614,30 @@ function oppdaterScoreLag() {
   map.setLayoutProperty('dominant10', 'visibility', state.lag.dominant || (state.lag.score10 && state.art === 'blandet') ? 'visible' : 'none');
 }
 function pip(pt, ring) { let inside = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [xi, yi] = ring[i], [xj, yj] = ring[j]; if (((yi > pt[1]) !== (yj > pt[1])) && (pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi)) inside = !inside; } return inside; }
+function kjerneFaktor(p, regel) {
+  // effective factor of a core area: bonus_faktor or bonus when given; otherwise the note rule («ingen fugl» pulls down) or the default.
+  // positive lifts toward 100, negative pulls toward 0; both clamped to maks_bonus / maks_trekk from config/habitat.json
+  let f = p.bonus_faktor != null && p.bonus_faktor !== '' ? +p.bonus_faktor : p.bonus != null && p.bonus !== '' ? +p.bonus : NaN;
+  if (isNaN(f)) f = (regel.trekk_notat || []).some(t => String(p.notat || '').toLowerCase().includes(t)) ? regel.standard_trekk : regel.standard_bonus;
+  return f < 0 ? Math.max(regel.maks_trekk != null ? regel.maks_trekk : -1, f) : Math.min(regel.maks_bonus, f);
+}
 function brukKjerner(grid) {
-  // kjerner from local knowledge: kb_<art> = points added toward 100 (score + bonus * (100 - score))
+  // kjerner from local knowledge: kb_<art> = points added toward 100 (faktor * (100 - score)) for positive factors,
+  // points removed toward 0 (faktor * score) for negative ones. The strongest lift and the strongest pull in a cell are summed.
+  // a core without 'arter' applies to all species
   const k = CFG.kjerner; const regel = CFG.habitat.kjerner;
   for (const f of grid.features) {
     for (const a of ARTER) f.properties[`kb_${a}`] = 0;
     if (!k || !k.features || !k.features.length) continue;
     const r = f.geometry.coordinates[0]; const c = [(r[0][0] + r[2][0]) / 2, (r[0][1] + r[2][1]) / 2];
+    const opp = {}, ned = {};
     for (const kj of k.features) {
       const polys = kj.geometry.type === 'Polygon' ? [kj.geometry.coordinates] : kj.geometry.coordinates;
       if (!polys.some(p => pip(c, p[0]) && !p.slice(1).some(h => pip(c, h)))) continue;
-      const bonus = Math.min(regel.maks_bonus, kj.properties.bonus ?? regel.standard_bonus);
-      for (const a of (kj.properties.arter || [])) { const v = f.properties[`sc_${a}`]; if (v != null) f.properties[`kb_${a}`] = Math.max(f.properties[`kb_${a}`], Math.round(bonus * (100 - v))); }
+      const fak = kjerneFaktor(kj.properties, regel); const arter = kj.properties.arter && kj.properties.arter.length ? kj.properties.arter : ARTER;
+      for (const a of arter) { const v = f.properties[`sc_${a}`]; if (v == null) continue; if (fak >= 0) opp[a] = Math.max(opp[a] || 0, Math.round(fak * (100 - v))); else ned[a] = Math.min(ned[a] || 0, Math.round(fak * v)); }
     }
+    for (const a of ARTER) f.properties[`kb_${a}`] = (opp[a] || 0) + (ned[a] || 0);
   }
   return !!(k && k.features && k.features.length);
 }
@@ -633,7 +646,7 @@ function oppdaterBonus() {
   if (!state.grid) return; const dato = isoDate(addDays(state.oppsett.dato, state.dag - 1)); const items = obsItems();
   for (const f of state.grid.features) {
     const r = f.geometry.coordinates[0]; const [x, y] = toXY((r[0][0] + r[2][0]) / 2, (r[0][1] + r[2][1]) / 2);
-    for (const a of ARTER) { const m = f.properties[`sc_${a}`]; if (m == null) { f.properties[`sk_${a}`] = null; f.properties[`ob_${a}`] = 0; continue; } const ob = obsBonusXY(x, y, a, dato, items); f.properties[`ob_${a}`] = Math.round(ob); f.properties[`sk_${a}`] = Math.min(100, m + (f.properties[`kb_${a}`] || 0) + Math.round(ob)); }
+    for (const a of ARTER) { const m = f.properties[`sc_${a}`]; if (m == null) { f.properties[`sk_${a}`] = null; f.properties[`ob_${a}`] = 0; continue; } const ob = obsBonusXY(x, y, a, dato, items); f.properties[`ob_${a}`] = Math.round(ob); f.properties[`sk_${a}`] = Math.max(0, Math.min(100, m + (f.properties[`kb_${a}`] || 0) + Math.round(ob))); }
   }
   if (map && map.getSource('grid')) map.getSource('grid').setData(state.grid);
 }
@@ -678,7 +691,7 @@ function byggStil(metas, F, mork, lag) {
     vann: { type: 'geojson', data: 'data/vann.geojson' }, bekker: { type: 'geojson', data: 'data/bekker.geojson' }, stier: { type: 'geojson', data: 'data/stier.geojson' }, myr: { type: 'geojson', data: 'data/myr_n50.geojson' },
     artskart: { type: 'geojson', data: 'data/artskart.geojson' }, kjerner: { type: 'geojson', data: TOM_FC }, logg: { type: 'geojson', data: TOM_FC }, tegn: { type: 'geojson', data: TOM_FC }, obs: { type: 'geojson', data: TOM_FC },
     dominant10: { type: 'image', url: 'data/dominant.png', coordinates: metas.dominant.coordinates },
-    besokt: { type: 'geojson', data: TOM_FC }, 'rute-andre': { type: 'geojson', data: TOM_FC }, 'rute-aktiv': { type: 'geojson', data: TOM_FC, lineMetrics: true }, spor: { type: 'geojson', data: TOM_FC },
+    besokt: { type: 'geojson', data: TOM_FC }, turer: { type: 'geojson', data: CFG.turer || TOM_FC }, 'rute-andre': { type: 'geojson', data: TOM_FC }, 'rute-aktiv': { type: 'geojson', data: TOM_FC, lineMetrics: true }, spor: { type: 'geojson', data: TOM_FC },
   };
   for (const a of ARTER) sources[`score10-${a}`] = { type: 'image', url: `data/score_${a}.png`, coordinates: metas[a].coordinates };
   const vis = on => ({ visibility: on ? 'visible' : 'none' });
@@ -701,10 +714,12 @@ function byggStil(metas, F, mork, lag) {
     { id: 'jaktfelt', type: 'line', source: 'jaktfelt', layout: Object.assign({ 'line-cap': 'round', 'line-join': 'round' }, vis(lag.jaktfelt)), paint: { 'line-color': GRENSE, 'line-width': ['step', ['zoom'], 3, 13.01, 4] } },
     { id: 'obs-fill', type: 'fill', source: 'obs', filter: ['==', ['geometry-type'], 'Polygon'], layout: vis(lag.obs), paint: { 'fill-color': obsFarge(F), 'fill-opacity': ['*', 0.1, ['get', 'op']] } },
     { id: 'obs-line', type: 'line', source: 'obs', filter: ['==', ['geometry-type'], 'Polygon'], layout: vis(lag.obs), paint: { 'line-color': obsFarge(F), 'line-width': 1.5, 'line-opacity': ['get', 'op'] } },
-    { id: 'kjerner-fill', type: 'fill', source: 'kjerner', layout: vis(lag.kjerner), paint: { 'fill-color': F.accent, 'fill-opacity': 0.12 } },
-    { id: 'kjerner-line', type: 'line', source: 'kjerner', layout: vis(lag.kjerner), paint: { 'line-color': F.accent, 'line-width': 2, 'line-dasharray': [3, 2] } },
+    { id: 'kjerner-fill', type: 'fill', source: 'kjerner', layout: vis(lag.kjerner), paint: { 'fill-color': kjerneFarge(F), 'fill-opacity': 0.12 } },
+    { id: 'kjerner-line', type: 'line', source: 'kjerner', layout: vis(lag.kjerner), paint: { 'line-color': kjerneFarge(F), 'line-width': 2, 'line-dasharray': [3, 2] } },
     { id: 'wms-matrikkel', type: 'raster', source: 'wms-matrikkel', layout: vis(lag.wmsMatrikkel), paint: { 'raster-opacity': 0.8 } },
     { id: 'besokt', type: 'fill', source: 'besokt', layout: vis(lag.besokt), paint: { 'fill-pattern': 'hatch-graa', 'fill-opacity': ['interpolate', ['linear'], ['get', 'alder'], 1, 0.9, 4, 0.35] } },
+    { id: 'gatt-halo', type: 'line', source: 'turer', layout: Object.assign({ 'line-cap': 'round', 'line-join': 'round' }, vis(lag.gatt)), paint: { 'line-color': F.halo, 'line-width': 5, 'line-opacity': 0.9 } },
+    { id: 'gatt', type: 'line', source: 'turer', layout: Object.assign({ 'line-cap': 'round', 'line-join': 'round' }, vis(lag.gatt)), paint: { 'line-color': F.ink, 'line-width': 2.5 } },
     { id: 'artskart', type: 'circle', source: 'artskart', layout: vis(lag.artskart), paint: { 'circle-radius': 6, 'circle-color': artFarge(F), 'circle-stroke-color': F.halo, 'circle-stroke-width': 1.5 } },
     { id: 'rute-sveip', type: 'line', source: 'rute-aktiv', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': F.accent, 'line-opacity': 0.16, 'line-width': ['interpolate', ['exponential', 2], ['zoom'], 12, 4, 13, 8, 15, 32, 17, 128] } },
     { id: 'rute-andre', type: 'line', source: 'rute-andre', layout: Object.assign({ 'line-cap': 'round', 'line-join': 'round' }, vis(lag.ruter)), paint: { 'line-color': F.ink2, 'line-width': 2, 'line-dasharray': [1.5, 2] } },
@@ -721,6 +736,7 @@ function byggStil(metas, F, mork, lag) {
   return { version: 8, sources, layers };
 }
 function obsFarge(F) { return ['match', ['get', 'art'], 'lirype', F.lirype, 'orrfugl', F.orrfugl, 'storfugl', F.storfugl, F.ink2]; }
+function kjerneFarge(F) { return ['case', ['<', ['coalesce', ['get', '_faktor'], 0], 0], F.ink2, F.accent]; }  // cores that pull down are grey, cores that lift are orange
 const TOM_FC = { type: 'FeatureCollection', features: [] };
 const GRENSE = '#C2410C';  // jaktfeltgrensen: mørk oransje med hvit kant, lik i begge moduser så den leses på skog, snaufjell og vann
 function pilBilde(color) {
@@ -761,18 +777,18 @@ async function initKart() {
   map.on('load', () => { brukTema(); lastGrid(); tegnStedMarkorer(); oppdaterStartMarkorer(); oppdaterKjernerLag(); oppdaterLoggLag(); oppdaterObsLag(); });
   map.on('click', e => {
     if (TEGN.aktiv) { tegnKlikk(e.lngLat); return; }
-    if (LOGGV.venterKlikk) { settLoggPos(e.lngLat.lat, e.lngLat.lng, null, 'kart'); LOGGV.venterKlikk = false; $('#logg-dialog').showModal(); return; }
+    if (LOGGV.venterKlikk) { settLoggPos(e.lngLat.lat, e.lngLat.lng, null, 'kart'); LOGGV.venterKlikk = false; foreslaaTidFraSpor(e.lngLat.lat, e.lngLat.lng); $('#logg-dialog').showModal(); return; }
     if (state.velgIKart) { const o = { ...state.oppsett, egen: { lat: e.lngLat.lat, lon: e.lngLat.lng } }; const rolle = state.velgIKart; state.velgIKart = null; lagreOppsett(o); toast(`${rolle === 'start' ? 'Startpunkt' : 'Sluttpunkt'} satt i kartet`); return; }
-    const f = map.queryRenderedFeatures(e.point, { layers: ['logg', 'obs-pkt', 'artskart', 'obs-fill', 'score-grid'] })[0];
+    const f = map.queryRenderedFeatures(e.point, { layers: ['logg', 'obs-pkt', 'artskart', 'obs-fill', 'gatt', 'score-grid'] })[0];
     if (!f) { lukkPopup(); return; }
     if (f.layer.id === 'obs-pkt' || f.layer.id === 'obs-fill') { const p = f.properties; const navn = { lirype: 'Rype', orrfugl: 'Orrfugl', storfugl: 'Storfugl', ukjent_honsefugl: 'Ukjent hønsefugl' }[p.art] || p.art; const typ = { sett: 'sett', stokket: 'støkket', felt: 'felt', spor: 'spor', omrade: 'område' }[p.type] || p.type;
       visPopup(new maplibregl.Popup({ offset: 10, className: 'pop', maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(`<div class="pop"><h3>${navn}${p.kjonn && p.kjonn !== 'ukjent' ? `, ${p.kjonn}` : ''}, ${typ}</h3><p>${p.dato}${p.dato_usikker === true || p.dato_usikker === 'true' ? ' (dato usikker)' : ''}${p.antall ? `, ${p.antall} ${p.antall === 1 ? 'fugl' : 'fugler'}` : ''}${p.presisjon_m ? `, presisjon ${p.presisjon_m} m` : ''}<br>Kilde: ${p.kilde}${p.notat ? `<br>${p.notat}` : ''}</p><div class="celle">${p.id}, vekt i dag ${fmt.dec(p.vekt)}</div></div>`)); return; }
     if (f.layer.id === 'logg') { const p = f.properties; const pop = new maplibregl.Popup({ offset: 10, className: 'pop', maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(`<div class="pop"><h3>${p.type === 'felt' ? 'Felt' : 'Støkk'}, ${ART_NAVN[p.art] || p.art}</h3><p>${p.antall} ${p.antall === 1 ? 'fugl' : 'fugler'}, ${klokke(p.tid)} ${p.tid.slice(0, 10)}${p.noyaktighet_m ? `, GPS ±${fmt.int(p.noyaktighet_m)} m` : ''}${p.kilde === 'import' ? ', importert' : ''}<br>${p.notat || ''}</p><div class="actions"><button class="btn btn-small" data-slett="${p.id}">Slett</button></div></div>`); visPopup(pop); pop.getElement().querySelector('[data-slett]').addEventListener('click', () => { slettLogg(p.id); pop.remove(); }); return; }
+    if (f.layer.id === 'gatt') { const p = f.properties; visPopup(new maplibregl.Popup({ offset: 8, className: 'pop', maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(`<div class="pop"><h3>Gått ${datoKort(p.dato)}</h3><p>${p.start}–${p.slutt}, ${fmt.dec(p.km)} km, ${fmt.int(p.hoydemeter_opp)} m opp, ${fmt.int(p.hoyde_min)}–${fmt.int(p.hoyde_maks)} moh.<br>${p.navn}, ${p.kilde}. Trykk Støkk eller Felt og «Klikk i kartet» på sporet, så foreslås dato og klokkeslett derfra.</p><div class="celle">${p.id}</div></div>`)); return; }
     if (f.layer.id === 'artskart') { const p = f.properties; visPopup(new maplibregl.Popup({ offset: 10, className: 'pop', maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(`<div class="pop"><h3>${ART_NAVN[p.art] || p.art}</h3><p>${p.dato || ''}${p.antall ? `, ${p.antall} individ` : ''}. Presisjon ${p.presisjon_m ?? '?'} m.<br>${p.kilde || ''}</p></div>`)); return; }
     visPopup(new maplibregl.Popup({ offset: 6, className: 'pop', maxWidth: '280px' }).setLngLat(e.lngLat).setHTML(cellePopupHtml(f.properties)));
   });
-  map.on('mouseenter', 'artskart', () => { map.getCanvas().style.cursor = 'pointer'; });
-  map.on('mouseleave', 'artskart', () => { map.getCanvas().style.cursor = ''; });
+  for (const id of ['artskart', 'gatt']) { map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer'; }); map.on('mouseleave', id, () => { map.getCanvas().style.cursor = ''; }); }
 }
 // ---- popups: one at a time, readable words instead of codes
 let aktivPopup = null;
@@ -791,7 +807,7 @@ function cellePopupHtml(p) {
   const tittel = [`${fmt.int(p.h)} moh`, ORD.at[p.at] || 'ukjent', tre].filter(Boolean).join(', ');
   const aktiv = state.art === 'blandet' ? ARTER.reduce((a, c) => ((p['sk_' + c] ?? -1) > (p['sk_' + a] ?? -1) ? c : a), 'lirype') : state.art;
   const score = ARTER.map(a => { const v = p['sk_' + a], m = p['sc_' + a], kb = p['kb_' + a] || 0, ob = p['ob_' + a] || 0;
-    const deler = []; if (kb) deler.push(`kjerner +${fmt.int(kb)}`); if (ob) deler.push(`observasjoner +${fmt.int(ob)}`);
+    const deler = []; if (kb) deler.push(`kjerner ${kb > 0 ? '+' : '−'}${fmt.int(Math.abs(kb))}`); if (ob) deler.push(`observasjoner +${fmt.int(ob)}`);
     const txt = `${ART_NAVN[a]} ${v == null ? '–' : fmt.int(v)}${deler.length ? ` (modell ${fmt.int(m)}, ${deler.join(', ')})` : ''}`; return a === aktiv ? `<b>${txt}</b>` : `<span>${txt}</span>`; }).join('<br>');
   const asp = p.asp >= 0 ? `, ${kompass(rund10(p.asp))} ${rund10(p.asp) % 360}°` : '';
   const rader = [
@@ -831,11 +847,11 @@ function oppdaterStartMarkorer() {
 
 // ============================================================ lagvelger
 const LAGDEF = {
-  vaare: [['score', 'Habitatscore, 50 m-celler', null], ['score10', 'Score i 10 m (detaljbilde)', null], ['dominant', 'Dominerende art, 10 m', null], ['ruter', 'Andre dagers ruter', '--ink-2'], ['besokt', 'Sist besøkt, skravur', '--ink-2'], ['obs', 'Observasjoner (data/observasjoner.geojson)', '--storfugl'], ['kjerner', 'Kjerneområder fra lokalkunnskap', '--accent'], ['artskart', 'Funn fra Artskart', '--orrfugl']],
+  vaare: [['score', 'Habitatscore, 50 m-celler', null], ['score10', 'Score i 10 m (detaljbilde)', null], ['dominant', 'Dominerende art, 10 m', null], ['ruter', 'Andre dagers ruter', '--ink-2'], ['besokt', 'Sist besøkt, skravur', '--ink-2'], ['gatt', 'Gått, GPS-spor fra turene', '--ink'], ['obs', 'Observasjoner (data/observasjoner.geojson)', '--storfugl'], ['kjerner', 'Kjerneområder fra lokalkunnskap', '--accent'], ['artskart', 'Funn fra Artskart', '--orrfugl']],
   grunnlag: [['jaktfelt', 'Jaktfelt og teiger', '--ink'], ['nabo', 'Naboteiger, der vi ikke går', '--warn'], ['vann', 'Vann og bekker', '--water'], ['stier', 'Stier og veger', '--ink-2'], ['myr', 'Myr fra N50', '--mire'], ['punkter', 'Alle startpunkter, ikke bare dagens', '--ink']],
   sannhet: [['wmsAr5', 'NIBIO AR5 arealtype', null], ['wmsTreslag', 'NIBIO SR16 treslag', null], ['wmsBonitet', 'NIBIO SR16 bonitet', null], ['wmsMatrikkel', 'Kartverket matrikkelkart', null]],
 };
-const LAGKART = { score: ['score-grid'], ruter: ['rute-andre'], besokt: ['besokt'], obs: ['obs-fill', 'obs-line', 'obs-pkt'], kjerner: ['kjerner-fill', 'kjerner-line'], artskart: ['artskart'], jaktfelt: ['jaktfelt', 'jaktfelt-halo', 'teiger'], nabo: ['nabo-fill', 'nabo-line'], vann: ['vann', 'bekker'], stier: ['stier'], myr: ['myr'], wmsAr5: ['wms-ar5'], wmsTreslag: ['wms-treslag'], wmsBonitet: ['wms-bonitet'], wmsMatrikkel: ['wms-matrikkel'] };
+const LAGKART = { score: ['score-grid'], ruter: ['rute-andre'], besokt: ['besokt'], gatt: ['gatt', 'gatt-halo'], obs: ['obs-fill', 'obs-line', 'obs-pkt'], kjerner: ['kjerner-fill', 'kjerner-line'], artskart: ['artskart'], jaktfelt: ['jaktfelt', 'jaktfelt-halo', 'teiger'], nabo: ['nabo-fill', 'nabo-line'], vann: ['vann', 'bekker'], stier: ['stier'], myr: ['myr'], wmsAr5: ['wms-ar5'], wmsTreslag: ['wms-treslag'], wmsBonitet: ['wms-bonitet'], wmsMatrikkel: ['wms-matrikkel'] };
 function tegnLagvelger() {
   for (const [grp, liste] of Object.entries(LAGDEF)) {
     const box = $(`#lag-${grp === 'vaare' ? 'vaare' : grp}`); box.replaceChildren();
@@ -866,7 +882,7 @@ function brukTema() {
   // the topo map keeps its normal colours in both modes; dark mode only restyles panels, text and our own lines
   requestAnimationFrame(() => {
     const F = lesFarger();
-    const paints = { stier: ['line-color', F.ink], 'nabo-line': ['line-color', F.warn], vann: ['fill-color', F.water], bekker: ['line-color', F.water], myr: ['fill-color', F.mire], 'kjerner-fill': ['fill-color', F.accent], 'kjerner-line': ['line-color', F.accent] };
+    const paints = { stier: ['line-color', F.ink], 'nabo-line': ['line-color', F.warn], vann: ['fill-color', F.water], bekker: ['line-color', F.water], myr: ['fill-color', F.mire], 'kjerner-fill': ['fill-color', kjerneFarge(F)], 'kjerner-line': ['line-color', kjerneFarge(F)], gatt: ['line-color', F.ink], 'gatt-halo': ['line-color', F.halo] };
     for (const [id, [prop, val]] of Object.entries(paints)) map.setPaintProperty(id, prop, val);
     map.setPaintProperty('artskart', 'circle-stroke-color', F.halo);
     map.setPaintProperty('artskart', 'circle-color', artFarge(F));
@@ -1034,7 +1050,7 @@ function naermesteNode(graf, pt) { const [x, y] = toXY(pt.lon, pt.lat); let best
 function nodesWithin(graf, ix, r) { const n = graf.nodes[ix]; const out = []; const c = Math.ceil(r / 50); for (let di = -c; di <= c; di++) for (let dj = -c; dj <= c; dj++) { if (Math.hypot(di, dj) * 50 > r + 1) continue; const m = graf.idx.get((n.i + di) * 100000 + (n.j + dj)); if (m != null) out.push(m); } return out; }
 function scoreAv(n, art) {
   // effective score for the planning day: model + kjerner + observations (weighted by age relative to PLAN_DATO)
-  const en = a => { const m = n.p['sc_' + a]; if (m == null) return -1; const ob = (typeof obsBonusXY === 'function' && PLAN_DATO) ? obsBonusXY(n.x, n.y, a, PLAN_DATO, OBS_CACHE) : 0; return Math.min(100, m + (n.p['kb_' + a] || 0) + ob); };
+  const en = a => { const m = n.p['sc_' + a]; if (m == null) return -1; const ob = (typeof obsBonusXY === 'function' && PLAN_DATO) ? obsBonusXY(n.x, n.y, a, PLAN_DATO, OBS_CACHE) : 0; return Math.max(0, Math.min(100, m + (n.p['kb_' + a] || 0) + ob)); };
   if (art === 'blandet') { let mx = -1; for (const a of ARTER) mx = Math.max(mx, en(a)); return mx; }
   return en(art);
 }
@@ -1373,7 +1389,7 @@ function apneLogg(type) {
   const art = state.art === 'blandet' ? 'lirype' : state.art;
   byggSeg($('#l-art'), ARTER.map(a => [a, ART_NAVN[a], cssVar('--' + a)]), art, () => {});
   byggSeg($('#l-antall'), ['1', '2', '3', '4', '5', '6+'].map(n => [n, n]), '1', () => {});
-  const n = new Date(); f.tid.value = `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`; f.notat.value = '';
+  const n = new Date(); f.dato.value = isoDate(addDays(state.oppsett.dato, state.dag - 1)); f.tid.value = `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`; f.notat.value = '';
   $('#l-pos').textContent = 'Ingen posisjon ennå. Hent GPS, klikk i kartet eller bruk kartets sentrum.';
   $('#logg-dialog').showModal();
   if (navigator.geolocation) hentGps();
@@ -1392,13 +1408,36 @@ $('#l-sentrum').addEventListener('click', () => { const c = map.getCenter(); set
 $('#l-avbryt').addEventListener('click', () => { LOGGV.venterKlikk = false; $('#logg-dialog').close(); });
 $('#logg-form').addEventListener('submit', e => {
   const f = e.target; if (!LOGGV.pos) { e.preventDefault(); toast('Velg en posisjon først'); return; }
-  const dato = isoDate(addDays(state.oppsett.dato, state.dag - 1)); const tid = f.tid.value || '12:00';
+  const dato = /^\d{4}-\d{2}-\d{2}$/.test(f.dato.value) ? f.dato.value : isoDate(addDays(state.oppsett.dato, state.dag - 1)); const tid = f.tid.value || '12:00';
   const antallV = segVerdi($('#l-antall')); const antall = antallV === '6+' ? 6 : +antallV;
   LOGG.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [+LOGGV.pos.lon.toFixed(6), +LOGGV.pos.lat.toFixed(6)] },
     properties: { id: nyId(), type: LOGGV.type, art: segVerdi($('#l-art')), antall, tid: `${dato}T${tid}:00`, dag: state.dag, noyaktighet_m: LOGGV.pos.noyaktighet_m ? Math.round(LOGGV.pos.noyaktighet_m) : null, kilde: LOGGV.pos.kilde, notat: f.notat.value.trim(), registrert: new Date().toISOString() } });
   lagreLogg(); toast(`${LOGGV.type === 'felt' ? 'Felt' : 'Støkk'} lagret. Neste dags rute tar hensyn til det.`);
 });
 function slettLogg(id) { LOGG = LOGG.filter(f => f.properties.id !== id); lagreLogg(); toast('Slettet'); }
+function datoKort(iso) { return iso ? iso.slice(5, 10).split('-').reverse().join('.') : ''; }
+function naermestePaaSpor(lat, lon, maksM) {
+  // nearest point on a walked track (data/turer.geojson) within maksM, with the clock time interpolated between the track's vertices
+  const T = CFG.turer && CFG.turer.features; if (!T || !T.length) return null; const [x, y] = toXY(lon, lat); let best = null;
+  for (const f of T) {
+    const c = f.geometry.coordinates, ts = f.properties.tider_s; if (!f.properties.dato || !f.properties.start) continue;
+    for (let i = 1; i < c.length; i++) {
+      const [ax, ay] = toXY(c[i - 1][0], c[i - 1][1]), [bx, by] = toXY(c[i][0], c[i][1]); const dx = bx - ax, dy = by - ay; const L2 = dx * dx + dy * dy || 1;
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2)); const d = Math.hypot(x - (ax + t * dx), y - (ay + t * dy));
+      if (d <= maksM && (!best || d < best.d)) best = { d, f, sek: ts && ts[i - 1] != null && ts[i] != null ? ts[i - 1] + t * (ts[i] - ts[i - 1]) : null };
+    }
+  }
+  if (!best) return null;
+  const p = best.f.properties; let tid = null;
+  if (best.sek != null) { const [h, m] = p.start.split(':').map(Number); const min = Math.round(h * 60 + m + best.sek / 60); tid = `${String(Math.floor(min / 60) % 24).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`; }
+  return { avstand_m: best.d, dato: p.dato, tid, tur: p };
+}
+function foreslaaTidFraSpor(lat, lon) {
+  // a log point clicked on or beside a walked track gets that track's date and the clock time at that spot
+  const n = naermestePaaSpor(lat, lon, 80); if (!n) return; const f = $('#logg-form');
+  f.dato.value = n.dato; if (n.tid) f.tid.value = n.tid;
+  const e = $('#l-pos'); if (e) e.textContent += ` På sporet fra ${datoKort(n.dato)}${n.tid ? ` kl. ${n.tid}` : ''}, ${fmt.int(n.avstand_m)} m unna. Dato og tid er satt derfra.`;
+}
 function oppdaterLoggLag() {
   if (!map || !map.getSource('logg')) return;
   map.getSource('logg').setData({ type: 'FeatureCollection', features: LOGG.map(f => ({ ...f, properties: { ...f.properties, art: f.properties.type === 'felt' ? f.properties.art + '-felt' : f.properties.art } })) });
@@ -1415,6 +1454,8 @@ function tegnLogg() {
   const lokale = lokaleKjerner();
   const nObs = (CFG.obs && CFG.obs.features || []).length;
   if (nObs) frag.append(el('div', { class: 'small', style: 'margin-top: var(--s-2)' }, `Observasjonsdatabasen har ${nObs} oppføringer og gir bonus i cellene rundt, vektet etter alder. Loggen her gir samme bonus til neste dags rute.`));
+  const turer = (CFG.turer && CFG.turer.features) || [];
+  if (turer.length) frag.append(el('div', { class: 'small', style: 'margin-top: var(--s-2)' }, `Laget «Gått» viser ${turer.length} ${turer.length === 1 ? 'tur' : 'turer'} (${turer.map(f => datoKort(f.properties.dato)).join(', ')}). Trykk Støkk eller Felt og «Klikk i kartet» på sporet, så foreslås dato og klokkeslett derfra. Nye GPX legges i logg/turer/ og importeres med scripts/import_turer.py.`));
   frag.append(el('div', { class: 'actions-row' },
     el('button', { class: 'btn', onclick: eksporterLogg }, 'Last ned logg (GeoJSON)'),
     el('button', { class: 'btn', onclick: loggSomObservasjoner }, 'Last ned som observasjoner'),
@@ -1481,7 +1522,8 @@ function loggSomObservasjoner() {
 const TEGN = { aktiv: false, pkt: [] };
 function lokaleKjerner() { return store.get('jakt.kjerner', []); }
 function alleKjerner() { return { type: 'FeatureCollection', features: [...((CFG.kjerner && CFG.kjerner.features) || []), ...lokaleKjerner()] }; }
-function oppdaterKjernerLag() { if (map && map.getSource('kjerner')) map.getSource('kjerner').setData(alleKjerner()); }
+function kjernerForKart() { const R = CFG.habitat.kjerner; return { type: 'FeatureCollection', features: alleKjerner().features.map(f => ({ ...f, properties: { ...f.properties, _faktor: kjerneFaktor(f.properties, R) } })) }; }  // _faktor drives the colour, never exported
+function oppdaterKjernerLag() { if (map && map.getSource('kjerner')) map.getSource('kjerner').setData(kjernerForKart()); }
 function startTegning() { TEGN.aktiv = true; TEGN.pkt = []; lukkPopup(); $('#tegn').hidden = false; oppdaterTegn(); toast('Klikk hjørnene i kartet, minst tre. Trykk Ferdig når polygonet er lukket.'); }
 function oppdaterTegn() {
   const feats = TEGN.pkt.map(p => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: p } }));
@@ -1494,15 +1536,18 @@ function tegnKlikk(ll) { TEGN.pkt.push([+ll.lng.toFixed(6), +ll.lat.toFixed(6)])
 function avsluttTegning() { TEGN.aktiv = false; TEGN.pkt = []; $('#tegn').hidden = true; if (map.getSource('tegn')) map.getSource('tegn').setData(TOM_FC); }
 $('#tegn-angre').addEventListener('click', () => { TEGN.pkt.pop(); oppdaterTegn(); });
 $('#tegn-avbryt').addEventListener('click', avsluttTegning);
-$('#tegn-ferdig').addEventListener('click', () => { if (TEGN.pkt.length < 3) return; const f = $('#kjerne-form'); f.navn.value = ''; f.notat.value = ''; f.bonus.value = CFG.habitat.kjerner.standard_bonus; f.querySelectorAll('[name=art]').forEach(c => { c.checked = c.value === (state.art === 'blandet' ? 'lirype' : state.art); }); $('#kjerne-dialog').showModal(); });
+$('#tegn-ferdig').addEventListener('click', () => { if (TEGN.pkt.length < 3) return; const f = $('#kjerne-form'); const R = CFG.habitat.kjerner; f.navn.value = ''; f.notat.value = ''; f.bonus.value = R.standard_bonus; f.bonus.min = R.maks_trekk != null ? R.maks_trekk : -1; f.bonus.max = R.maks_bonus; f.tom.checked = false; f.querySelectorAll('[name=art]').forEach(c => { c.checked = c.value === (state.art === 'blandet' ? 'lirype' : state.art); }); $('#kjerne-dialog').showModal(); });
 $('#k-avbryt').addEventListener('click', () => $('#kjerne-dialog').close());
+$('#kjerne-form').tom.addEventListener('change', e => { const R = CFG.habitat.kjerner; $('#kjerne-form').bonus.value = e.target.checked ? R.standard_trekk : R.standard_bonus; });
 $('#kjerne-form').addEventListener('submit', e => {
   const f = e.target; const arter = [...f.querySelectorAll('[name=art]:checked')].map(c => c.value); if (!arter.length) { e.preventDefault(); toast('Velg minst én art'); return; }
-  const bonus = Math.min(CFG.habitat.kjerner.maks_bonus, Math.max(0.05, +f.bonus.value || CFG.habitat.kjerner.standard_bonus));
-  const feat = { type: 'Feature', properties: { navn: f.navn.value.trim(), arter, bonus, kilde: 'jaktlogg', dato: isoDate(new Date()), notat: f.notat.value.trim() }, geometry: { type: 'Polygon', coordinates: [[...TEGN.pkt, TEGN.pkt[0]]] } };
+  const R = CFG.habitat.kjerner; const raa = f.bonus.value === '' ? NaN : +f.bonus.value;
+  const bonus = kjerneFaktor({ bonus: isNaN(raa) ? (f.tom.checked ? R.standard_trekk : R.standard_bonus) : raa }, R);
+  let notat = f.notat.value.trim(); if (f.tom.checked && !/ingen fugl/i.test(notat)) notat = `Ingen fugl. ${notat}`.trim();
+  const feat = { type: 'Feature', properties: { navn: f.navn.value.trim(), arter, bonus, kilde: 'jaktlogg', dato: isoDate(new Date()), notat }, geometry: { type: 'Polygon', coordinates: [[...TEGN.pkt, TEGN.pkt[0]]] } };
   const lok = lokaleKjerner(); lok.push(feat); store.set('jakt.kjerner', lok); avsluttTegning(); oppdaterKjernerLag();
   if (state.grid) { CFG.kjerner = alleKjerner(); state.gridKjerner = brukKjerner(state.grid); oppdaterBonus(); oppdaterScoreLag(); }
-  tegnLogg(); tegnPanel(); toast(`Kjerneområdet «${feat.properties.navn}» er lagret og gir bonus i cellene. Last ned kjerner.geojson for å legge det i repoet.`);
+  tegnLogg(); tegnPanel(); toast(`Kjerneområdet «${feat.properties.navn}» er lagret og ${bonus < 0 ? 'trekker ned' : 'gir bonus i'} cellene. Last ned kjerner.geojson for å legge det i repoet.`);
 });
 function eksporterKjerner() { lastNed('kjerner.geojson', JSON.stringify({ type: 'FeatureCollection', metadata: { _doc: 'Kjerneområder fra lokalkunnskap. Format: se kjerner i config/habitat.json. Erstatt config/kjerner.geojson med denne filen.', eksportert: new Date().toISOString() }, features: alleKjerner().features }, null, 1), 'application/geo+json'); toast('kjerner.geojson lastet ned, legg den i config/ og commit'); }
 // ---- offline
@@ -1535,8 +1580,8 @@ function lastNedPng() { try { map.once('idle', () => lastNed(`jakt-bygland-${sta
 
 // ============================================================ boot
 async function boot() {
-  const [habitat, route, start, steder, kjerner, obs] = await Promise.all(['config/habitat.json', 'config/route.json', 'config/start.json', 'config/steder.json', 'config/kjerner.geojson', 'data/observasjoner.geojson'].map(u => fetch(u).then(r => r.ok ? r.json() : null).catch(() => null)));
-  Object.assign(CFG, { habitat, route, start, steder, kjerner, obs: obs || TOM_FC }); HABITAT = habitat;
+  const [habitat, route, start, steder, kjerner, obs, turer] = await Promise.all(['config/habitat.json', 'config/route.json', 'config/start.json', 'config/steder.json', 'config/kjerner.geojson', 'data/observasjoner.geojson', 'data/turer.geojson'].map(u => fetch(u).then(r => r.ok ? r.json() : null).catch(() => null)));
+  Object.assign(CFG, { habitat, route, start, steder, kjerner, obs: obs || TOM_FC, turer: turer || TOM_FC }); HABITAT = habitat;
   CFG.kjerner = alleKjerner(); lastLogg(); tegnLogg();
   state.tema = store.get(LS.tema, 'auto'); Object.assign(state.lag, store.get(LS.lag, {}));
   brukTema();

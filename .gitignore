@@ -26,3 +26,4 @@ skills-lock.json
 # eksporterte jaktlogger er private og holdes utenfor det offentlige repoet
 logg/*.geojson
 logg/briefing-*.md
+logg/turer/

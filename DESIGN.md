@@ -167,6 +167,9 @@ Regler fra designskillen som gjelder her:
 - Startpunkt: ring 10 px med 2 px kant. Artskart-funn: punkt 6 px i artsfarge. Egne loggpunkter:
   firkant 8 px i artsfarge med `--ink`-kant.
 - «Sist besøkt»: skravur i `--visited`, tetthet avtar med alder (styrt av `rotasjon` i `config/route.json`).
+- «Gått»: GPS-spor fra `data/turer.geojson`, heltrukket 2,5 px `--ink` over 5 px halo i `--halo`, så det skilles fra
+  stiplede stier og jegerspor og fra den oransje ruten. Klikk gir popup med dato, tid, km og høydemeter.
+- Kjerneområder: 12 % fyll og 2 px stiplet kant, `--accent` når de løfter og `--ink-2` når de trekker ned (negativ faktor).
 
 ## Språk i grensesnittet
 

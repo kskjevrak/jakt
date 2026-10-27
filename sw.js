@@ -4,7 +4,7 @@
    - Kartverket-fliser: cache først med tak på antall
    - WMS-sannhetslag: bare nett
 */
-const VERSJON = 'jakt-v3';
+const VERSJON = 'jakt-v4';
 const APP = `${VERSJON}-app`;
 const FLISER = `${VERSJON}-fliser`;
 const MET = `${VERSJON}-met`;
@@ -16,7 +16,7 @@ const SKALL = [
   'data/jaktfelt.geojson', 'data/teiger.geojson', 'data/naboteiger.geojson', 'data/aoi.geojson', 'data/vann.geojson', 'data/bekker.geojson',
   'data/stier.geojson', 'data/myr_n50.geojson', 'data/artskart.geojson', 'data/grid.geojson',
   'data/score_lirype.png', 'data/score_lirype.json', 'data/score_orrfugl.png', 'data/score_orrfugl.json', 'data/score_storfugl.png', 'data/score_storfugl.json',
-  'data/dominant.png', 'data/dominant.json', 'data/forecast.json', 'data/sun.json',
+  'data/dominant.png', 'data/dominant.json', 'data/forecast.json', 'data/sun.json', 'data/turer.geojson', 'data/observasjoner.geojson',
   'https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.0/dist/maplibre-gl.js', 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.0/dist/maplibre-gl.css',
 ];
 

@@ -23,7 +23,7 @@ function grab(name) {
   if (first.trimEnd().endsWith('}') && opens === closes) return first + '\n';
   const j = script.indexOf('\n}\n', i); return script.slice(i, j + 3);
 }
-const NAMES = ['toXY', 'toLL', 'pip', 'byggGraf', 'dijkstra', 'stiTil', 'naermesteNode', 'nodesWithin', 'scoreAv', 'rotasjon', 'finnFelter', 'kmeans', 'lagFelt', 'rettLinje', 'sveipLinjer',
+const NAMES = ['toXY', 'toLL', 'pip', 'kjerneFaktor', 'brukKjerner', 'byggGraf', 'dijkstra', 'stiTil', 'naermesteNode', 'nodesWithin', 'scoreAv', 'rotasjon', 'finnFelter', 'kmeans', 'lagFelt', 'rettLinje', 'sveipLinjer',
   'overlappProsent', 'chaikin', 'offsetLinje', 'retningGrader', 'vinkelDiff', 'planleggDag', 'kompass', 'iHoydesone', 'obsItems', 'obsVekt', 'distTilRing', 'obsBonusXY',
   'motvindAndel', 'retningScore', 'reverserRute', 'lokal', 'timerForDag', 'vaerStat', 'isoDate'];
 const consts = [/const PROJ = [^\n]*\n/, /const OSLO = [^\n]*\n/].map(re => { const m = script.match(re); if (!m) throw new Error(`fant ikke konstant ${re}`); return m[0]; }).join('');
@@ -35,16 +35,17 @@ const habitat = JSON.parse(fs.readFileSync(path.join(ROOT, 'config/habitat.json'
 const steder = JSON.parse(fs.readFileSync(path.join(ROOT, 'config/steder.json'), 'utf8')).steder;
 const startpunkter = JSON.parse(fs.readFileSync(path.join(ROOT, 'config/start.json'), 'utf8')).startpunkter;
 const obs = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/observasjoner.geojson'), 'utf8'));
+const kjerner = JSON.parse(fs.readFileSync(path.join(ROOT, 'config/kjerner.geojson'), 'utf8'));
 const grid = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/grid.geojson'), 'utf8'));
 const arter = (flag('--arter', null) || (route.standard_dager && route.standard_dager.arter.join(',')) || 'storfugl,lirype,orrfugl').split(',');
 const o = { dato: dato0, dager: arter.length, form: flag('--form', 'normal'), start_tid: flag('--tid', '08:00'), timer: +flag('--timer', 7), arter, egen: null, sloyfe: false };
 
 const ctx = `const ARTER = ['lirype','orrfugl','storfugl']; const ART_NAVN = { lirype: 'Rype', orrfugl: 'Orrfugl', storfugl: 'Storfugl', blandet: 'Blandet' };
 const fmt = { int: n => String(Math.round(n)), dec: n => new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 1 }).format(n) }; const scoreKey = a => 'sk_' + a;
-let HABITAT = __habitat; let PLAN_DATO = null; let OBS_CACHE = null; let LOGG = []; const CFG = { route: __route, obs: __obs, habitat: __habitat }; const VAER = { punkter: {} };
+let HABITAT = __habitat; let PLAN_DATO = null; let OBS_CACHE = null; let LOGG = []; const CFG = { route: __route, obs: __obs, habitat: __habitat, kjerner: __kjerner }; const VAER = { punkter: {} };
 ${consts}${NAMES.map(grab).join('\n')}
-return { byggGraf, planleggDag, obsItems, obsBonusXY, obsVekt, motvindAndel, retningScore, reverserRute, timerForDag, vaerStat, kompass, isoDate, toXY, VAER, setPlanDato: (d, c) => { PLAN_DATO = d; OBS_CACHE = c; } };`;
-const M = new Function('__habitat', '__route', '__obs', ctx)(habitat, route, obs);
+return { byggGraf, brukKjerner, kjerneFaktor, planleggDag, obsItems, obsBonusXY, obsVekt, motvindAndel, retningScore, reverserRute, timerForDag, vaerStat, kompass, isoDate, toXY, VAER, setPlanDato: (d, c) => { PLAN_DATO = d; OBS_CACHE = c; } };`;
+const M = new Function('__habitat', '__route', '__obs', '__kjerner', ctx)(habitat, route, obs, kjerner);
 
 async function hentVaer() {
   const pts = route.vaer.punkter; let kilde = 'MET live';
@@ -63,9 +64,10 @@ const addDays = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d
 
 (async () => {
   const kilde = await hentVaer();
+  M.brukKjerner(grid);  // kjerner from local knowledge: kb_<art> on the cells, positive lifts and negative pulls, as in the web page
   const graf = M.byggGraf(grid, route);
   const middel = {}; for (const a of ['lirype', 'orrfugl', 'storfugl']) { let s = 0, n = 0; for (const nd of graf.nodes) { const v = nd.p['sc_' + a]; if (v != null && v >= 0) { s += v; n++; } } middel[a] = s / n; }
-  const items = M.obsItems(); const dager = {}; const ut = { dato: dato0, vaerkilde: kilde, form: o.form, timer: o.timer, dager: [] };
+  const items = M.obsItems(); const dager = {}; const ut = { dato: dato0, vaerkilde: kilde, form: o.form, timer: o.timer, kjerner: (kjerner.features || []).map(f => ({ navn: f.properties.navn, faktor: M.kjerneFaktor(f.properties, habitat.kjerner), arter: f.properties.arter && f.properties.arter.length ? f.properties.arter : 'alle', notat: f.properties.notat })), dager: [] };
   const toBiler = route.standard_per_art.to_biler_over_m || 2000;
   for (let d = 1; d <= arter.length; d++) {
     const art = arter[d - 1]; const std = route.standard_per_art[art] || route.standard_per_art.blandet; const dato = addDays(dato0, d - 1); const h0 = +o.start_tid.slice(0, 2);

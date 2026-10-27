@@ -537,13 +537,20 @@
   "kjerner": {
     "_doc": [
       "Kjerneområder fra lokalkunnskap: config/kjerner.geojson (FeatureCollection, WGS84). Hver feature har properties",
-      "{navn, arter: ['orrfugl', ...], bonus: 0.0–maks_bonus, kilde, dato, notat}. Polygoner eksporteres fra jaktloggen i nettsiden.",
-      "Bonusen brukes i nettsiden på 50 m-cellene (cellesenter i polygon): score_ny = score + bonus * (100 - score).",
+      "{navn, arter: ['orrfugl', ...], bonus eller bonus_faktor: maks_trekk–maks_bonus, kilde, dato, notat}. Polygoner tegnes i nettsiden og eksporteres derfra.",
+      "Positiv faktor løfter: score_ny = score + faktor * (100 - score). Negativ faktor trekker ned: score_ny = score + faktor * score, så -0,3 gjør 80 til 56.",
+      "Mangler bonus og bonus_faktor, gjelder standard_trekk når notatet inneholder en av trekk_notat (f.eks. «ingen fugl»), ellers standard_bonus. Mangler arter, gjelder kjernen alle artene.",
+      "Brukes i nettsiden og i scripts/plan_cli.js på 50 m-cellene (cellesenter i polygon). Sterkeste løft og sterkeste trekk i en celle summeres; effektiv score holdes i 0–100.",
       "Score-rasterne (PNG/COG) er rene modellverdier og endres ikke av kjerner, slik at modell og lokalkunnskap kan skilles i kartet."
     ],
     "fil": "config/kjerner.geojson",
     "standard_bonus": 0.25,
     "maks_bonus": 0.5,
+    "standard_trekk": -0.3,
+    "maks_trekk": -0.8,
+    "trekk_notat": [
+      "ingen fugl"
+    ],
     "arter_tillatt": [
       "lirype",
       "orrfugl",

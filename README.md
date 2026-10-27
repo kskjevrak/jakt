@@ -13,8 +13,8 @@ Tung geoprosessering gjøres lokalt i Python og commites som ferdige, klippede f
 | `config/habitat.json` | Habitatregler: høydesoner, terskler, klasser, vekter og straffer per art. Fargeskala. Regel for kjerneområder |
 | `config/route.json` | Rutebudsjetter per form, gangfart, feltvalg, samme-dag-straff, rotasjon, loggbonus, støkk-kalibrering, værpunkter, standard start og slutt per art |
 | `config/start.json`, `config/steder.json` | Startpunkter og faste steder (Hukebu) |
-| `config/kjerner.geojson` | Kjerneområder fra lokalkunnskap. Fylles fra nettsiden («Tegn kjerneområde» → «Last ned kjerner.geojson») |
-| `data/` | Ferdige filer nettsiden leser: jaktfelt, teiger, naboteiger, N50-lag, Artskart-funn, score-rastere (COG + PNG), `grid.geojson` med 50 m-celler, værfallback. `SOURCES.md` dokumenterer hver kilde |
+| `config/kjerner.geojson` | Kjerneområder fra lokalkunnskap. Fylles fra nettsiden («Tegn kjerneområde» → «Last ned kjerner.geojson»). Positiv bonus løfter, negativ bonus eller notat «ingen fugl» trekker ned |
+| `data/` | Ferdige filer nettsiden leser: jaktfelt, teiger, naboteiger, N50-lag, Artskart-funn, score-rastere (COG + PNG), `grid.geojson` med 50 m-celler, værfallback, `observasjoner.geojson`, `turer.geojson` med gåtte GPS-spor. `SOURCES.md` dokumenterer hver kilde |
 | `scripts/` | Henting og bygging, se under |
 | `raw/` | Rådata og mellomprodukter, gitignored |
 | `DESIGN.md`, `PLAN.md`, `STATUS.md` | Designtokens, plan og status |
@@ -91,6 +91,19 @@ Legg inn nye med `/obs <fritekst>` i Claude Code (strukturerer, viser tabell, co
 
 Nettsiden kan også laste ned loggen direkte i dette schemaet («Last ned som observasjoner»), så en logg promoteres med én kommando.
 
+## Gåtte turer
+
+Eksporter aktiviteten som GPX fra Garmin Connect (eller en annen klokke) og legg filen i `logg/turer/` (gitignored, rådataene med puls og sekundpunkter blir liggende lokalt). Kjør
+
+```
+.venv\Scripts\python.exe scripts\import_turer.py            # alle logg/turer/*.gpx → data/turer.geojson
+.venv\Scripts\python.exe scripts\import_turer.py --tabell   # bare vis tabellen
+```
+
+Scriptet forenkler sporet (Douglas–Peucker, 6 m), regner km og høydemeter på det fulle sporet, og skriver `data/turer.geojson` med dato, start, slutt, km, høydemeter, andel innenfor jaktfeltet og sekunder fra start per punkt. Filen commites, så laget «Gått» vises for alle. Scriptet bygger filen på nytt fra alle GPX-filene hver gang.
+
+I nettsiden ligger turene i laget «Gått» (på som standard). Klikk på sporet for nøkkeltall. Observasjoner i ettertid: trykk Støkk eller Felt, velg «Klikk i kartet» og klikk på sporet der det skjedde. Dato og klokkeslett foreslås fra nærmeste punkt på sporet (innen 80 m) og kan endres i dialogen. «Last ned som observasjoner» og `scripts/obs_add.py` tar dem videre inn i databasen.
+
 I nettsiden vises databasen som laget «Observasjoner» (på som standard på stor skjerm, av på telefon): ikon per art i artsfarge med dekkevne etter alder, polygoner som tynt omriss. I planleggeren gir observasjonene bonus i cellene innen 300 m av et punkt eller inne i et polygon pluss 150 m, vektet etter alder i forhold til plandagen (0 til 14 dager 1,0, 15 til 60 dager 0,5, samme måned tidligere år 0,25, ellers 0,1). Ukjent hønsefugl gir bonus til rype og orrfugl. Bonusen legges til etter habitatmodellen, maks pluss 20, og vises for seg i cellepopupen («modell 62, observasjoner +12»). Loggregistreringene i nettleseren går gjennom samme mekanisme. Alle tall står i `config/route.json` under `observasjoner`.
 
 ## Nettsiden
@@ -98,7 +111,7 @@ I nettsiden vises databasen som laget «Observasjoner» (på som standard på st
 - Oppsettet (dato, dager, art, start, slutt og sløyfe per dag, form) lagres i nettleseren og i lenka, så det kan deles. `auto=1` i lenka får siden til å legge rutene selv. Standard er tre dager i rekkefølgen fra `config/route.json`: storfugl som gjennomgang Mele til Enden av vegen med to biler (snudd ved sørlig morgenvind ved fjorden), deretter rype og orrfugl som rundtur fra Troddebakken. Storfugl først fordi beltet langs lia da er urørt.
 - Ruter legges per dag innenfor km, høydemeter og timer fra `config/route.json`. Målfelt er de høyest scorede sammenhengende feltene for dagens art, gjennomgått i parallelle drag. Celler ruten har passert samme dag straffes slik at returen går en annen vei. Dager etter hverandre roterer med halveringstid. Overlapp og andel i gode celler vises per dag.
 - Loggen (Støkk, Felt) bruker GPS, lagres i nettleseren og lastes ned som GeoJSON. Registreringene gir bonus i cellene rundt for neste dags rute. Eksporterte logger i `logg/` brukes av `/briefing` og `/tune`.
-- Kjerneområder tegnes i kartet og lastes ned i formatet til `config/kjerner.geojson`. Legg filen i `config/` og commit, så gjelder den for alle.
+- Kjerneområder tegnes i kartet og lastes ned i formatet til `config/kjerner.geojson`. Legg filen i `config/` og commit, så gjelder den for alle. Positiv bonus løfter score i cellene (score + bonus × (100 − score)), negativ trekker ned (score + bonus × score, så −0,3 gjør 80 til 56); avkrysningen «Ingen fugl her» setter standardtrekket. I filen kan feltet hete `bonus` eller `bonus_faktor`; mangler tallet, trekker et notat med «ingen fugl» ned. Tom `arter`-liste betyr alle arter. Negative kjerner er grå i kartet, og cellepopupen viser «kjerner −12». Tallene står i `config/habitat.json` under `kjerner`, og `scripts/plan_cli.js` bruker kjernene på samme måte som nettsiden.
 - Offline: service workeren cacher appen, konfig, datafiler, siste varsel og kartflisene du har sett. Statusmerket øverst i panelet viser «Offline-klar».
 
 ## Verktøy

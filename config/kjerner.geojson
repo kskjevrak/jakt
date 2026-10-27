@@ -1,7 +1,7 @@
 {
   "type": "FeatureCollection",
   "metadata": {
-    "_doc": "Kjerneområder fra lokalkunnskap. Tom til felt-eksport fra jaktloggen fyller den. Format: se 'kjerner' i config/habitat.json.",
+    "_doc": "Kjerneområder fra lokalkunnskap. Tom til felt-eksport fra jaktloggen fyller den. Format: se 'kjerner' i config/habitat.json. bonus (eller bonus_faktor) over 0 løfter score, under 0 trekker ned. Uten tall: notat med «ingen fugl» trekker ned med standard_trekk.",
     "eksempel": {
       "type": "Feature",
       "properties": {
@@ -36,6 +36,44 @@
             ],
             [
               7.7,
+              58.78
+            ]
+          ]
+        ]
+      }
+    },
+    "eksempel_tomt": {
+      "type": "Feature",
+      "properties": {
+        "navn": "Eksempelrabb",
+        "arter": [],
+        "bonus_faktor": -0.3,
+        "kilde": "jaktlogg",
+        "dato": "2026-10-25",
+        "notat": "Ingen fugl. Gått grundig to dager på rad, tørr rabb uten bær. Tom arter-liste betyr alle arter."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              7.72,
+              58.78
+            ],
+            [
+              7.73,
+              58.78
+            ],
+            [
+              7.73,
+              58.785
+            ],
+            [
+              7.72,
+              58.785
+            ],
+            [
+              7.72,
               58.78
             ]
           ]
