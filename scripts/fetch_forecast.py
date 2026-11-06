@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -49,14 +50,30 @@ def main() -> int:
         old = (prev.get("punkter") or {}).get(p["id"])
         if old and old.get("last_modified"):
             headers["If-Modified-Since"] = old["last_modified"]
-        r = s.get(LF, params=params, headers=headers, timeout=60)
-        if r.status_code == 304 and old:
-            out["punkter"][p["id"]] = old
-            continue
-        r.raise_for_status()
+        data = None
+        for attempt in range(3):
+            try:
+                r = s.get(LF, params=params, headers=headers, timeout=60)
+                if r.status_code == 304 and old:
+                    break
+                r.raise_for_status()
+                data = r.json()  # MET kan svare med avkortet JSON; prøv på nytt
+                break
+            except (requests.RequestException, ValueError) as e:
+                if attempt == 2:
+                    if old:  # behold forrige gyldige data fremfor å feile
+                        print(f"MET feilet for {p['id']}: {e}; beholder gamle data", file=sys.stderr)
+                        break
+                    raise
+                time.sleep(5 * (attempt + 1))
+        if data is None:
+            if old:
+                out["punkter"][p["id"]] = old
+                continue
+            raise RuntimeError(f"Ingen data for {p['id']}")
         out["punkter"][p["id"]] = {"navn": p["navn"], "lat": p["lat"], "lon": p["lon"], "hoyde_moh": p["hoyde_moh"],
                                    "expires": r.headers.get("Expires"), "last_modified": r.headers.get("Last-Modified"),
-                                   "data": r.json()}
+                                   "data": data}
         changed = True
     if changed or not fp.exists():
         fp.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
