@@ -1,16 +1,11 @@
 {
- "hentet": "2026-11-15T18:55:21Z",
+ "hentet": "2026-11-16T06:40:40Z",
  "kilde": "MET Norge Sunrise 3.0",
  "punkt": {
   "lat": 58.788,
   "lon": 7.7
  },
  "dager": {
-  "2026-11-15": {
-   "soloppgang": "2026-11-15T08:19+01:00",
-   "solnedgang": "2026-11-15T16:07+01:00",
-   "solhoyde_middag": 12.66
-  },
   "2026-11-16": {
    "soloppgang": "2026-11-16T08:22+01:00",
    "solnedgang": "2026-11-16T16:05+01:00",
@@ -55,6 +50,11 @@
    "soloppgang": "2026-11-24T08:40+01:00",
    "solnedgang": "2026-11-24T15:50+01:00",
    "solhoyde_middag": 10.61
+  },
+  "2026-11-25": {
+   "soloppgang": "2026-11-25T08:42+01:00",
+   "solnedgang": "2026-11-25T15:49+01:00",
+   "solhoyde_middag": 10.42
   }
  }
 }
